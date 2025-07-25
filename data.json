@@ -1,0 +1,22 @@
+{
+  "projects": [
+    {
+      "id": "1753404336931",
+      "name": "gcard-api",
+      "path": "D:\\Workspaces\\mvn\\general-card",
+      "includeFullPath": true,
+      "excludePatterns": []
+    },
+    {
+      "id": "1753404750294",
+      "name": "ecard-agent",
+      "path": "D:\\Workspaces\\mvn\\ecard-agent",
+      "includeFullPath": false,
+      "excludePatterns": []
+    }
+  ],
+  "prompts": {
+    "1753404336931": "项目列表增加一个输入框，可以实时筛选\n\n@card",
+    "1753404750294": "@cardasdf asdlfkj   where\n\n@ecard-agent-model/src/main/java/cn/cytong/ecardagent/model/Customer.java \n@custdao\n@booking/sku.java"
+  }
+}

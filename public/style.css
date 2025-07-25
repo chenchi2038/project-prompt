@@ -1,0 +1,190 @@
+#promptTextarea {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+#fileDropdown {
+    position: absolute;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    width: 800px;
+    display: block;
+}
+
+.file-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.file-option:hover {
+    background-color: #f8f9fa;
+}
+
+.file-option.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.project-tab {
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.project-tab.active {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.navbar-nav .nav-link {
+    padding: 0.5rem 1rem;
+}
+
+/* 左侧项目管理区域 */
+.project-sidebar {
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+}
+
+.project-list {
+    padding: 1rem;
+}
+
+.project-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.project-item:hover {
+    background-color: #e9ecef;
+}
+
+.project-item.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.project-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.project-path {
+    font-size: 0.875rem;
+    color: #6c757d;
+    word-break: break-all;
+}
+
+.project-item.active .project-path {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 右侧编辑区域 */
+.editor-area {
+    height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#promptTextarea {
+    flex: 1;
+    resize: none;
+}
+
+/* 项目操作按钮 */
+.project-actions .btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 项目项操作按钮 */
+.project-item-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.project-item:hover .project-item-actions {
+    opacity: 1;
+}
+
+.project-item-actions .btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin-left: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+/* 项目加载状态 */
+.project-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.project-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    transform: translateY(-50%);
+}
+
+@keyframes spin {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* 确保项目项有相对定位 */
+.project-item {
+    position: relative;
+}
+
+/* Bootstrap Icons 替代方案 */
+.btn-icon::before {
+    font-family: monospace;
+    font-weight: bold;
+}
+
+.btn-icon.icon-plus::before {
+    content: '+';
+}
+
+.btn-icon.icon-refresh::before {
+    content: '↻';
+}
+
+.btn-icon.icon-edit::before {
+    content: '✎';
+}
+
+.btn-icon.icon-delete::before {
+    content: '×';
+}

@@ -1,0 +1,10 @@
+# 测试 .gitignore 文件
+target/
+*.class
+*.jar
+logs/
+/out
+node_modules/
+.idea/
+*.iml
+.DS_Store
