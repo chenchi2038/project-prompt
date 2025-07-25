@@ -18,7 +18,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 数据存储
 let appData = {
   projects: [],
-  prompts: {} // 项目ID -> 提示词内容
+  prompts: {}, // 项目ID -> 提示词内容
+  favorites: [] // 收藏的提示词列表
 };
 
 // 读取 .gitignore 文件并转换为 glob 模式
@@ -290,6 +291,96 @@ app.post('/api/copy-with-source', async (req, res) => {
   }
 });
 
+// 收藏功能 API
+
+// 获取所有收藏
+app.get('/api/favorites', (req, res) => {
+  res.json(appData.favorites || []);
+});
+
+// 添加收藏
+app.post('/api/favorites', async (req, res) => {
+  try {
+    const { name, description, content, projectId } = req.body;
+
+    if (!name || !content) {
+      return res.status(400).json({ error: '名称和内容不能为空' });
+    }
+
+    const favorite = {
+      id: Date.now().toString(),
+      name,
+      description: description || '',
+      content,
+      projectId: projectId || null,
+      createdAt: new Date().toISOString()
+    };
+
+    if (!appData.favorites) {
+      appData.favorites = [];
+    }
+
+    appData.favorites.push(favorite);
+    await saveData();
+
+    res.json(favorite);
+  } catch (error) {
+    console.error('添加收藏失败:', error);
+    res.status(500).json({ error: '添加收藏失败' });
+  }
+});
+
+// 删除收藏
+app.delete('/api/favorites/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!appData.favorites) {
+      appData.favorites = [];
+    }
+
+    const favoriteIndex = appData.favorites.findIndex(f => f.id === id);
+    if (favoriteIndex === -1) {
+      return res.status(404).json({ error: '收藏未找到' });
+    }
+
+    appData.favorites.splice(favoriteIndex, 1);
+    await saveData();
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('删除收藏失败:', error);
+    res.status(500).json({ error: '删除收藏失败' });
+  }
+});
+
+// 更新收藏
+app.put('/api/favorites/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+
+    if (!appData.favorites) {
+      appData.favorites = [];
+    }
+
+    const favoriteIndex = appData.favorites.findIndex(f => f.id === id);
+    if (favoriteIndex === -1) {
+      return res.status(404).json({ error: '收藏未找到' });
+    }
+
+    if (name) appData.favorites[favoriteIndex].name = name;
+    if (description !== undefined) appData.favorites[favoriteIndex].description = description;
+    appData.favorites[favoriteIndex].updatedAt = new Date().toISOString();
+
+    await saveData();
+    res.json(appData.favorites[favoriteIndex]);
+  } catch (error) {
+    console.error('更新收藏失败:', error);
+    res.status(500).json({ error: '更新收藏失败' });
+  }
+});
+
 // 扫描项目文件并缓存
 async function scanProjectFiles(project) {
   try {
@@ -519,7 +610,7 @@ function calculateSingleSegmentScore(filePath, filter) {
 // 启动服务器
 async function start() {
   await loadData();
-  
+
   app.listen(PORT, () => {
     console.log(`提示词编写工具已启动: http://localhost:${PORT}`);
     open(`http://localhost:${PORT}`);

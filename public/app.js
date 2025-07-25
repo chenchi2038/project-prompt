@@ -8,12 +8,15 @@ class PromptWriter {
         this.atPosition = -1;
         this.projectLoadingStates = new Map(); // 记录项目文件加载状态
         this.projectFilter = ''; // 项目筛选关键词
+        this.favorites = []; // 收藏列表
+        this.currentFavoriteId = null; // 当前是否为收藏的提示词
 
         this.init();
     }
     
     async init() {
         await this.loadProjects();
+        await this.loadFavorites();
         this.bindEvents();
 
         console.log('初始化完成，项目数量:', this.projects.length);
@@ -128,6 +131,10 @@ class PromptWriter {
         // 加载新项目的提示词
         await this.loadPrompt();
 
+        // 更新收藏相关UI
+        this.renderFavoritesList();
+        this.updateFavoriteButton();
+
         // 如果项目文件未加载，自动加载
         await this.ensureProjectFilesLoaded(projectId);
     }
@@ -236,6 +243,8 @@ class PromptWriter {
         // 监听输入事件
         textarea.addEventListener('input', (e) => {
             this.handleInput(e);
+            // 更新收藏按钮状态
+            this.updateFavoriteButton();
             // 自动保存
             if (this.currentProject) {
                 clearTimeout(this.saveTimeout);
@@ -309,6 +318,16 @@ class PromptWriter {
                 console.error('源码复制失败:', err);
                 this.showMessage('源码复制失败', 'error');
             }
+        });
+
+        // 收藏按钮
+        document.getElementById('favoriteBtn').addEventListener('click', () => {
+            this.toggleFavorite();
+        });
+
+        // 保存收藏确认按钮
+        document.getElementById('confirmSaveFavoriteBtn').addEventListener('click', () => {
+            this.saveFavorite();
         });
 
         // 添加项目
@@ -391,6 +410,9 @@ class PromptWriter {
         const dropdown = document.getElementById('fileDropdown');
         dropdown.innerHTML = '';
 
+        // 获取当前的过滤条件
+        const currentFilter = this.getCurrentFileFilter();
+
         if (this.currentFiles.length === 0) {
             // 显示无匹配内容的提示
             const div = document.createElement('div');
@@ -404,7 +426,8 @@ class PromptWriter {
             this.currentFiles.forEach((file, index) => {
                 const div = document.createElement('div');
                 div.className = 'file-option';
-                div.textContent = file;
+                // 使用 innerHTML 而不是 textContent 来支持高亮标签
+                div.innerHTML = this.highlightText(file, currentFilter);
                 div.dataset.index = index;
 
                 div.addEventListener('click', () => {
@@ -761,8 +784,403 @@ class PromptWriter {
     highlightText(text, filter) {
         if (!filter) return text;
 
-        const regex = new RegExp(`(${filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return text.replace(regex, '<mark>$1</mark>');
+        // 对于文件路径，使用更智能的高亮逻辑
+        if (text.includes('/')) {
+            return this.highlightFilePath(text, filter);
+        } else {
+            // 对于项目名称等简单文本，使用简单的正则匹配
+            const regex = new RegExp(`(${filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return text.replace(regex, '<mark>$1</mark>');
+        }
+    }
+
+    // 获取当前文件过滤条件
+    getCurrentFileFilter() {
+        if (this.atPosition === -1) return '';
+
+        const textarea = document.getElementById('promptTextarea');
+        const value = textarea.value;
+        const cursorPos = textarea.selectionStart;
+
+        // 获取 @ 后面的内容作为过滤条件
+        return value.substring(this.atPosition + 1, cursorPos);
+    }
+
+    // 智能高亮文件路径
+    highlightFilePath(filePath, filter) {
+        if (!filter) return filePath;
+
+        const filterLower = filter.toLowerCase();
+
+        // 检查是否包含路径分隔符
+        if (filterLower.includes('/')) {
+            return this.highlightByPathSegments(filePath, filterLower);
+        } else {
+            return this.highlightBySingleSegment(filePath, filterLower);
+        }
+    }
+
+    // 按路径段高亮
+    highlightByPathSegments(filePath, filter) {
+        const filterSegments = filter.split('/').filter(seg => seg.length > 0);
+        let result = filePath;
+
+        // 为每个过滤段在路径中找到最佳匹配并高亮
+        for (const filterSegment of filterSegments) {
+            result = this.highlightSegmentInPath(result, filterSegment);
+        }
+
+        return result;
+    }
+
+    // 在单个路径段中高亮
+    highlightBySingleSegment(filePath, filter) {
+        const pathSegments = filePath.split('/');
+        const highlightedSegments = pathSegments.map(segment => {
+            return this.highlightInSegment(segment, filter);
+        });
+
+        return highlightedSegments.join('/');
+    }
+
+    // 在路径中高亮特定段
+    highlightSegmentInPath(filePath, filterSegment) {
+        const pathSegments = filePath.split('/');
+        let bestMatchIndex = -1;
+        let bestMatchType = '';
+
+        // 找到最佳匹配的段
+        for (let i = 0; i < pathSegments.length; i++) {
+            const segment = pathSegments[i].toLowerCase();
+            const filter = filterSegment.toLowerCase();
+
+            if (segment === filter) {
+                bestMatchIndex = i;
+                bestMatchType = 'exact';
+                break;
+            } else if (segment.startsWith(filter)) {
+                if (bestMatchType !== 'exact') {
+                    bestMatchIndex = i;
+                    bestMatchType = 'start';
+                }
+            } else if (segment.includes(filter)) {
+                if (bestMatchType !== 'exact' && bestMatchType !== 'start') {
+                    bestMatchIndex = i;
+                    bestMatchType = 'contains';
+                }
+            } else if (this.fuzzyMatch(segment, filter)) {
+                if (bestMatchType === '') {
+                    bestMatchIndex = i;
+                    bestMatchType = 'fuzzy';
+                }
+            }
+        }
+
+        // 高亮最佳匹配的段
+        if (bestMatchIndex >= 0) {
+            pathSegments[bestMatchIndex] = this.highlightInSegment(pathSegments[bestMatchIndex], filterSegment);
+        }
+
+        return pathSegments.join('/');
+    }
+
+    // 在单个段中高亮
+    highlightInSegment(segment, filter) {
+        const segmentLower = segment.toLowerCase();
+        const filterLower = filter.toLowerCase();
+
+        if (segmentLower.includes(filterLower)) {
+            // 直接包含的情况
+            const regex = new RegExp(`(${filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return segment.replace(regex, '<mark>$1</mark>');
+        } else if (this.fuzzyMatch(segmentLower, filterLower)) {
+            // 模糊匹配的情况
+            return this.highlightFuzzyMatch(segment, filter);
+        }
+
+        return segment;
+    }
+
+    // 检查是否模糊匹配
+    fuzzyMatch(text, pattern) {
+        let patternIndex = 0;
+        for (let i = 0; i < text.length && patternIndex < pattern.length; i++) {
+            if (text[i] === pattern[patternIndex]) {
+                patternIndex++;
+            }
+        }
+        return patternIndex === pattern.length;
+    }
+
+    // 高亮模糊匹配
+    highlightFuzzyMatch(text, pattern) {
+        const textLower = text.toLowerCase();
+        const patternLower = pattern.toLowerCase();
+        let result = '';
+        let patternIndex = 0;
+        let inMark = false;
+
+        for (let i = 0; i < text.length; i++) {
+            const isMatch = patternIndex < patternLower.length && textLower[i] === patternLower[patternIndex];
+
+            if (isMatch && !inMark) {
+                // 开始一个新的高亮区域
+                result += '<mark>' + text[i];
+                inMark = true;
+                patternIndex++;
+            } else if (isMatch && inMark) {
+                // 继续当前的高亮区域
+                result += text[i];
+                patternIndex++;
+            } else if (!isMatch && inMark) {
+                // 结束当前的高亮区域
+                result += '</mark>' + text[i];
+                inMark = false;
+            } else {
+                // 普通字符
+                result += text[i];
+            }
+        }
+
+        // 如果最后还在高亮状态，需要关闭标签
+        if (inMark) {
+            result += '</mark>';
+        }
+
+        return result;
+    }
+
+    // 收藏功能相关方法
+
+    // 加载收藏列表
+    async loadFavorites() {
+        try {
+            const response = await fetch('/api/favorites');
+            this.favorites = await response.json();
+            this.renderFavoritesList();
+            this.updateFavoriteButton();
+        } catch (error) {
+            console.error('加载收藏列表失败:', error);
+        }
+    }
+
+    // 渲染收藏列表
+    renderFavoritesList() {
+        const favoritesList = document.getElementById('favoritesList');
+        favoritesList.innerHTML = '';
+
+        // 获取当前项目的收藏
+        const currentProjectFavorites = this.getCurrentProjectFavorites();
+
+        if (currentProjectFavorites.length === 0) {
+            const li = document.createElement('li');
+            const projectName = this.currentProject ? this.currentProject.name : '当前项目';
+            li.innerHTML = `<span class="dropdown-item-text text-muted">${projectName}暂无收藏</span>`;
+            favoritesList.appendChild(li);
+            return;
+        }
+
+        // 添加项目标题
+        if (this.currentProject) {
+            const headerLi = document.createElement('li');
+            headerLi.innerHTML = `<h6 class="dropdown-header">${this.escapeHtml(this.currentProject.name)} 的收藏</h6>`;
+            favoritesList.appendChild(headerLi);
+        }
+
+        currentProjectFavorites.forEach(favorite => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="favorite-item" data-favorite-id="${favorite.id}">
+                    <div class="favorite-name">${this.escapeHtml(favorite.name)}</div>
+                    ${favorite.description ? `<div class="favorite-description">${this.escapeHtml(favorite.description)}</div>` : ''}
+                    <div class="favorite-preview">${this.escapeHtml(favorite.content.substring(0, 50))}${favorite.content.length > 50 ? '...' : ''}</div>
+                    <div class="favorite-actions">
+                        <button class="btn btn-sm btn-outline-primary" onclick="promptWriter.loadFavorite('${favorite.id}')">加载</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="promptWriter.deleteFavorite('${favorite.id}')">删除</button>
+                    </div>
+                </div>
+            `;
+            favoritesList.appendChild(li);
+        });
+    }
+
+    // 获取当前项目的收藏
+    getCurrentProjectFavorites() {
+        if (!this.currentProject) {
+            return [];
+        }
+        return this.favorites.filter(favorite => favorite.projectId === this.currentProject.id);
+    }
+
+    // 更新收藏按钮状态
+    updateFavoriteButton() {
+        const favoriteBtn = document.getElementById('favoriteBtn');
+        const favoriteIcon = document.getElementById('favoriteIcon');
+        const textarea = document.getElementById('promptTextarea');
+        const currentContent = textarea.value;
+
+        // 如果没有当前项目，禁用收藏按钮
+        if (!this.currentProject) {
+            favoriteBtn.disabled = true;
+            favoriteBtn.title = '请先选择项目';
+            favoriteIcon.textContent = '♡';
+            this.currentFavoriteId = null;
+            return;
+        }
+
+        favoriteBtn.disabled = false;
+        favoriteBtn.title = '';
+
+        // 检查当前内容是否在当前项目中已收藏
+        const currentProjectFavorites = this.getCurrentProjectFavorites();
+        const existingFavorite = currentProjectFavorites.find(f => f.content === currentContent);
+
+        if (existingFavorite) {
+            favoriteBtn.classList.add('favorited');
+            favoriteIcon.textContent = '♥';
+            this.currentFavoriteId = existingFavorite.id;
+        } else {
+            favoriteBtn.classList.remove('favorited');
+            favoriteIcon.textContent = '♡';
+            this.currentFavoriteId = null;
+        }
+    }
+
+    // 切换收藏状态
+    toggleFavorite() {
+        const textarea = document.getElementById('promptTextarea');
+        const content = textarea.value.trim();
+
+        if (!content) {
+            this.showMessage('请先输入提示词内容', 'warning');
+            return;
+        }
+
+        if (this.currentFavoriteId) {
+            // 已收藏，删除收藏
+            this.deleteFavorite(this.currentFavoriteId);
+        } else {
+            // 未收藏，显示收藏对话框
+            this.showSaveFavoriteModal(content);
+        }
+    }
+
+    // 显示保存收藏的模态框
+    showSaveFavoriteModal(content) {
+        const modal = new bootstrap.Modal(document.getElementById('saveFavoriteModal'));
+        const nameInput = document.getElementById('favoriteName');
+        const descriptionInput = document.getElementById('favoriteDescription');
+        const previewDiv = document.getElementById('favoriteContentPreview');
+
+        // 清空表单
+        nameInput.value = '';
+        descriptionInput.value = '';
+        previewDiv.textContent = content;
+
+        // 自动生成名称建议
+        const lines = content.split('\n').filter(line => line.trim());
+        if (lines.length > 0) {
+            const firstLine = lines[0].trim();
+            nameInput.value = firstLine.length > 30 ? firstLine.substring(0, 30) + '...' : firstLine;
+        }
+
+        modal.show();
+    }
+
+    // 保存收藏
+    async saveFavorite() {
+        const nameInput = document.getElementById('favoriteName');
+        const descriptionInput = document.getElementById('favoriteDescription');
+        const textarea = document.getElementById('promptTextarea');
+
+        const name = nameInput.value.trim();
+        const description = descriptionInput.value.trim();
+        const content = textarea.value.trim();
+
+        if (!name) {
+            this.showMessage('请输入收藏名称', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/favorites', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name,
+                    description,
+                    content,
+                    projectId: this.currentProject ? this.currentProject.id : null
+                })
+            });
+
+            if (response.ok) {
+                const favorite = await response.json();
+                this.favorites.push(favorite);
+                this.renderFavoritesList();
+                this.updateFavoriteButton();
+
+                // 关闭模态框
+                const modal = bootstrap.Modal.getInstance(document.getElementById('saveFavoriteModal'));
+                modal.hide();
+
+                this.showMessage('收藏保存成功', 'success');
+            } else {
+                this.showMessage('保存收藏失败', 'error');
+            }
+        } catch (error) {
+            console.error('保存收藏失败:', error);
+            this.showMessage('保存收藏失败', 'error');
+        }
+    }
+
+    // 加载收藏的提示词
+    loadFavorite(favoriteId) {
+        const favorite = this.favorites.find(f => f.id === favoriteId);
+        if (!favorite) {
+            this.showMessage('收藏不存在', 'error');
+            return;
+        }
+
+        // 检查收藏是否属于当前项目
+        if (favorite.projectId !== this.currentProject?.id) {
+            this.showMessage('该收藏不属于当前项目', 'warning');
+            return;
+        }
+
+        const textarea = document.getElementById('promptTextarea');
+        textarea.value = favorite.content;
+        this.currentFavoriteId = favoriteId;
+        this.updateFavoriteButton();
+
+        this.showMessage(`已加载收藏: ${favorite.name}`, 'success');
+    }
+
+    // 删除收藏
+    async deleteFavorite(favoriteId) {
+        if (!confirm('确定要删除这个收藏吗？')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/favorites/${favoriteId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                this.favorites = this.favorites.filter(f => f.id !== favoriteId);
+                this.renderFavoritesList();
+                this.updateFavoriteButton();
+                this.showMessage('收藏已删除', 'success');
+            } else {
+                this.showMessage('删除收藏失败', 'error');
+            }
+        } catch (error) {
+            console.error('删除收藏失败:', error);
+            this.showMessage('删除收藏失败', 'error');
+        }
     }
 }
 

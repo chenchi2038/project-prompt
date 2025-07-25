@@ -28,6 +28,30 @@
     color: white;
 }
 
+/* 文件下拉框中的高亮样式 */
+.file-option mark {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 1px 2px;
+    border-radius: 2px;
+    font-weight: bold;
+}
+
+.file-option.active mark {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+/* 项目列表中的高亮样式 */
+.project-name mark,
+.project-path mark {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 1px 2px;
+    border-radius: 2px;
+    font-weight: bold;
+}
+
 .project-tab {
     cursor: pointer;
     margin-right: 10px;
@@ -187,4 +211,72 @@
 
 .btn-icon.icon-delete::before {
     content: '×';
+}
+
+/* 收藏功能样式 */
+#favoriteBtn.favorited {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+#favoriteBtn.favorited #favoriteIcon {
+    content: '♥';
+}
+
+#favoriteBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.favorite-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.favorite-item:hover {
+    background-color: #f8f9fa;
+}
+
+.favorite-item:last-child {
+    border-bottom: none;
+}
+
+.favorite-name {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.favorite-description {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 4px;
+}
+
+.favorite-preview {
+    font-size: 0.75rem;
+    color: #868e96;
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+}
+
+.favorite-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+    margin-top: 4px;
+}
+
+.favorite-item:hover .favorite-actions {
+    opacity: 1;
+}
+
+.favorite-actions .btn {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    margin-right: 4px;
 }

@@ -13,10 +13,28 @@
       "path": "D:\\Workspaces\\mvn\\ecard-agent",
       "includeFullPath": false,
       "excludePatterns": []
+    },
+    {
+      "id": "1753414101036",
+      "name": "course-backend",
+      "path": "D:\\Workspaces\\solon\\course-backend",
+      "includeFullPath": false,
+      "excludePatterns": []
     }
   ],
   "prompts": {
-    "1753404336931": "项目列表增加一个输入框，可以实时筛选\n\n@card",
-    "1753404750294": "@cardasdf asdlfkj   where\n\n@ecard-agent-model/src/main/java/cn/cytong/ecardagent/model/Customer.java \n@custdao\n@booking/sku.java"
-  }
+    "1753404336931": "",
+    "1753404750294": "再增加提示词收藏功能，底部增加收藏按钮，在底部右侧可以切换收藏的提示词",
+    "1753414101036": "@course-common/src/main/java/com/ruiya/course/solution/model/vo/SolutionCommentVO.java 增加 userRole字段，该字段对应的是 @course-common/src/main/java/com/ruiya/course/oj/po/OjDomainUser.java 的role字段\n\n在 @course-front/src/main/java/com/ruiya/course/front/solution/service/SolutionCommentService.java 中fill userRole字段"
+  },
+  "favorites": [
+    {
+      "id": "1753428105887",
+      "name": "再增加提示词收藏功能",
+      "description": "安保处",
+      "content": "再增加提示词收藏功能，底部增加收藏按钮，在底部右侧可以切换收藏的提示词",
+      "projectId": "1753404336931",
+      "createdAt": "2025-07-25T07:21:45.887Z"
+    }
+  ]
 }
