@@ -1,10 +1,10 @@
 {
-  "name": "prompt-writer",
+  "name": "project-prompt",
   "version": "1.0.0",
   "description": "A prompt writing tool for developers",
   "main": "index.js",
   "bin": {
-    "prompt-writer": "./bin/cli.js"
+    "project-prompt": "./bin/cli.js"
   },
   "scripts": {
     "start": "node index.js",
