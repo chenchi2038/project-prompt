@@ -443,7 +443,7 @@ async function scanProjectFiles(project) {
     const files = await glob(pattern, {
       ignore: normalizedExcludePatterns,
       nodir: true,
-      dot: false
+      dot: true
     });
 
     // 转换为相对路径
