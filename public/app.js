@@ -6,6 +6,7 @@ class PromptWriter {
         this.selectedFileIndex = -1;
         this.currentFiles = [];
         this.atPosition = -1;
+        this.isContentMode = false; // 标记是否为@@内容模式
         this.projectLoadingStates = new Map(); // 记录项目文件加载状态
         this.projectFilter = ''; // 项目筛选关键词
         this.favorites = []; // 收藏列表
@@ -364,16 +365,32 @@ class PromptWriter {
         
         console.log('输入事件触发，光标位置:', cursorPos, '当前字符:', value[cursorPos - 1]);
         
-        // 检查是否输入了 @
-        if (value[cursorPos - 1] === '@') {
-            console.log('检测到 @ 符号');
+        // 检查是否输入了连续的两个@符号
+        if (value[cursorPos - 1] === '@' && value[cursorPos - 2] === '@') {
+            console.log('检测到连续的 @@ 符号');
+            this.atPosition = cursorPos - 2; // 记录第一个@的位置
+            this.isContentMode = true; // 标记为内容模式
+            this.showFileDropdown('');
+        } else if (value[cursorPos - 1] === '@') {
+            console.log('检测到单个 @ 符号');
             this.atPosition = cursorPos - 1;
+            this.isContentMode = false; // 标记为普通模式
             this.showFileDropdown('');
         } else if (this.isShowingDropdown && this.atPosition !== -1) {
-            // 获取 @ 后面的内容作为过滤条件
-            const filter = value.substring(this.atPosition + 1, cursorPos);
-            console.log('更新过滤条件:', filter);
-            this.showFileDropdown(filter);
+            // 检查是否是@@模式
+            if (value[this.atPosition] === '@' && value[this.atPosition + 1] === '@') {
+                // @@模式下，获取@@后面的内容作为过滤条件
+                const filter = value.substring(this.atPosition + 2, cursorPos);
+                console.log('更新@@过滤条件:', filter);
+                this.isContentMode = true;
+                this.showFileDropdown(filter);
+            } else {
+                // 普通@模式下，获取@后面的内容作为过滤条件
+                const filter = value.substring(this.atPosition + 1, cursorPos);
+                console.log('更新@过滤条件:', filter);
+                this.isContentMode = false;
+                this.showFileDropdown(filter);
+            }
         } else if (this.isShowingDropdown) {
             // 如果光标移出了 @ 区域，隐藏下拉框
             const beforeCursor = value.substring(0, cursorPos);
@@ -551,24 +568,63 @@ class PromptWriter {
         });
     }
     
-    selectFile(index) {
+    async selectFile(index) {
         const file = this.currentFiles[index];
         const textarea = document.getElementById('promptTextarea');
         const value = textarea.value;
         const cursorPos = textarea.selectionStart;
         
-        // 替换 @ 和后面的过滤文本
-        const beforeAt = value.substring(0, this.atPosition);
-        const afterCursor = value.substring(cursorPos);
-        const newValue = beforeAt + '@' + file + ' ' + afterCursor;
-        
-        textarea.value = newValue;
-        textarea.selectionStart = textarea.selectionEnd = beforeAt.length + file.length + 2;
+        // 检查是否是@@模式（内容模式）
+        if (this.isContentMode) {
+            console.log('@@模式，获取文件内容:', file);
+            
+            try {
+                // 获取文件内容
+                const response = await fetch(`/api/projects/${this.currentProject.id}/file-content?filePath=${encodeURIComponent(file)}`);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // 替换 @@ 和后面的过滤文本，插入文件内容
+                    const beforeAt = value.substring(0, this.atPosition);
+                    const afterCursor = value.substring(cursorPos);
+                    
+                    // 格式化文件内容，添加文件路径标识和内容标签
+                    // const fileContentText = `${file}\n\`\`\`\n${result.content}\n\`\`\`\n\n`;
+                    
+                    const newValue = beforeAt + result.content + afterCursor;
+                    
+                    textarea.value = newValue;
+                    // 将光标定位到插入内容的末尾
+                    const newCursorPos = beforeAt.length + fileContentText.length;
+                    textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+                    
+                    this.showMessage(`已插入文件内容: ${file}`, 'success');
+                } else {
+                    this.showMessage('获取文件内容失败', 'error');
+                    console.error('获取文件内容失败:', response.status);
+                }
+            } catch (error) {
+                console.error('获取文件内容失败:', error);
+                this.showMessage('获取文件内容失败', 'error');
+            }
+        } else {
+            // 普通@模式，只插入文件路径
+            console.log('普通@模式，插入文件路径:', file);
+            
+            // 替换 @ 和后面的过滤文本
+            const beforeAt = value.substring(0, this.atPosition);
+            const afterCursor = value.substring(cursorPos);
+            const newValue = beforeAt + '@' + file + ' ' + afterCursor;
+            
+            textarea.value = newValue;
+            textarea.selectionStart = textarea.selectionEnd = beforeAt.length + file.length + 2;
+        }
         
         this.hideDropdown();
         textarea.focus();
         
-        console.log('选择文件:', file);
+        console.log('选择文件完成:', file);
     }
     
     async addProject() {

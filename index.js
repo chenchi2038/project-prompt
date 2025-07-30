@@ -291,6 +291,46 @@ app.post('/api/copy-with-source', async (req, res) => {
   }
 });
 
+// 获取文件内容 API
+app.get('/api/projects/:projectId/file-content', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { filePath } = req.query;
+    
+    if (!filePath) {
+      return res.status(400).json({ error: '文件路径参数缺失' });
+    }
+    
+    const project = appData.projects.find(p => p.id === projectId);
+    if (!project) {
+      return res.status(404).json({ error: '项目不存在' });
+    }
+
+    const fullPath = path.join(project.path, filePath);
+    
+    // 安全检查：确保文件路径在项目目录内
+    const resolvedPath = path.resolve(fullPath);
+    const resolvedProjectPath = path.resolve(project.path);
+    if (!resolvedPath.startsWith(resolvedProjectPath)) {
+      return res.status(403).json({ error: '访问被拒绝' });
+    }
+
+    if (await fs.pathExists(fullPath)) {
+      const fileContent = await fs.readFile(fullPath, 'utf8');
+      res.json({ 
+        filePath,
+        content: fileContent 
+      });
+    } else {
+      res.status(404).json({ error: '文件不存在' });
+    }
+    
+  } catch (error) {
+    console.error('读取文件失败:', error);
+    res.status(500).json({ error: '读取文件失败' });
+  }
+});
+
 // 收藏功能 API
 
 // 获取所有收藏
