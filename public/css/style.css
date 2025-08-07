@@ -142,8 +142,14 @@
 
 /* 项目项操作按钮 */
 .project-item-actions {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
     opacity: 0;
     transition: opacity 0.2s;
+    display: flex;
+    gap: 4px;
 }
 
 .project-item:hover .project-item-actions {
@@ -154,7 +160,6 @@
     width: 24px;
     height: 24px;
     padding: 0;
-    margin-left: 4px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
