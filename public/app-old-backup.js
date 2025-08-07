@@ -267,6 +267,15 @@ class PromptWriter {
             }
         });
         
+        // 模板链接事件
+        document.querySelectorAll('.template-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const template = link.dataset.template;
+                this.loadTemplate(template);
+            });
+        });
+        
         // 清除按钮
         document.getElementById('clearBtn').addEventListener('click', () => {
             textarea.value = '';
@@ -1190,6 +1199,47 @@ class PromptWriter {
             console.error('保存收藏失败:', error);
             this.showMessage('保存收藏失败', 'error');
         }
+    }
+
+    // 加载模板内容
+    loadTemplate(templateType) {
+        const textarea = document.getElementById('promptTextarea');
+        let templateContent = '';
+        
+        switch (templateType) {
+            case 'simple':
+                templateContent = `# 目标
+
+# 参考
+
+# 注意事项
+
+`;
+                break;
+            case 'database':
+                templateContent = `# 目标
+生成mysql数据库变更脚本，不要写入文件，给我语句即可
+
+`;
+                break;
+            default:
+                console.warn('未知的模板类型:', templateType);
+                return;
+        }
+        
+        textarea.value = templateContent;
+        this.currentFavoriteId = null;
+        this.updateFavoriteButton();
+        
+        // 自动保存
+        if (this.currentProject) {
+            clearTimeout(this.saveTimeout);
+            this.saveTimeout = setTimeout(() => this.savePrompt(), 1000);
+        }
+        
+        // 聚焦到文本区域
+        textarea.focus();
+        textarea.setSelectionRange(templateContent.length, templateContent.length);
     }
 
     // 加载收藏的提示词

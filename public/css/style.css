@@ -280,3 +280,20 @@
     font-size: 0.75rem;
     margin-right: 4px;
 }
+
+/* 模板链接区域样式 */
+.template-links {
+    padding-bottom: 0.5rem;
+}
+
+.template-link {
+    font-size: 0.875rem;
+    text-decoration: none;
+    color: #007bff;
+    transition: all 0.2s;
+}
+
+.template-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}

@@ -20,21 +20,53 @@
       "path": "D:\\Workspaces\\solon\\course-backend",
       "includeFullPath": false,
       "excludePatterns": []
+    },
+    {
+      "id": "1753944502749",
+      "name": "ucard-backend",
+      "path": "D:\\Workspaces\\solon\\ucard-backend",
+      "includeFullPath": false,
+      "excludePatterns": []
+    },
+    {
+      "id": "1753954205661",
+      "name": "course-admin-front",
+      "path": "D:\\Workspaces\\solon\\course-admin-front",
+      "includeFullPath": false,
+      "excludePatterns": []
+    },
+    {
+      "id": "1754375075677",
+      "name": "ucard-backend",
+      "path": "D:\\Workspaces\\solon\\ucard-backend",
+      "includeFullPath": false,
+      "excludePatterns": []
+    },
+    {
+      "id": "1754381186333",
+      "name": "water-base",
+      "path": "D:\\Workspaces\\mvn\\water-base",
+      "includeFullPath": false,
+      "excludePatterns": []
     }
   ],
   "prompts": {
     "1753404336931": "",
-    "1753404750294": "再增加提示词收藏功能，底部增加收藏按钮，在底部右侧可以切换收藏的提示词",
-    "1753414101036": "@course-common/src/main/java/com/ruiya/course/solution/model/vo/SolutionCommentVO.java 增加 userRole字段，该字段对应的是 @course-common/src/main/java/com/ruiya/course/oj/po/OjDomainUser.java 的role字段\n\n在 @course-front/src/main/java/com/ruiya/course/front/solution/service/SolutionCommentService.java 中fill userRole字段"
+    "1753404750294": "",
+    "1753414101036": "# 目标\n\n# 参考\n\n# 注意事项\n\n",
+    "1753944502749": "@ucard-admin/src/main/java/cn/cytong/ucard/admin/system/controller/AdmSampleController.java ",
+    "1753954205661": "@src/views/system/tag/index.vue \n在分组内，增加一个排序开关，点击后开启排序，可以拖动标签进行排序\n提交 parentId 和id 列表，接口路径 /sor\n\n@src/views/system/tag/components/group-edit.vue \n@src/views/system/tag/components/category-edit.vue \n排序属性应该是sortOrder，部分地方写的是sort，该字段非必填",
+    "1754375075677": "@ucard-common/src/main/java/cn/cytong/ucard/system/service/AdmSampleService.java ",
+    "1754381186333": "阅读 @web/src/main/java/cn/cytong/tour/service/MeterService.kt \n阅读 @web/src/main/java/cn/cytong/tour/service/stat/ 目录下的 service\n\n总结一下 ebean 的用法，包括使用接口的对象查询，使用自定义sql的查询等，写一个md文件，放在 .claude 目录下，\n然后在 CLAUDE.md 添加一行，说明什么时候读取该文件"
   },
   "favorites": [
     {
-      "id": "1753428105887",
-      "name": "再增加提示词收藏功能",
-      "description": "安保处",
-      "content": "再增加提示词收藏功能，底部增加收藏按钮，在底部右侧可以切换收藏的提示词",
-      "projectId": "1753404336931",
-      "createdAt": "2025-07-25T07:21:45.887Z"
+      "id": "1753951961352",
+      "name": "重构 po 对象",
+      "description": "",
+      "content": "重构 ucard-common/src/main/java/cn/cytong/ucard/trade/model/po 目录下的po类，这些类对应的表都不存在，需要新建\n\n重构 @ucard-common/src/main/java/cn/cytong/ucard/card/model/po/CardServiceLog.java  目录下的po类，这些类对应的表都不存在，需要新建\n参考 cn.cytong.ucard.system.model.po.Tag \n- 使用 sagacity.sqltoy 相关的注解对数据库字段进行映射\n- id字段使用字符串类型，SnowflakeIdGenerator生成器，长度为20\n- 通用字段：create_time、update_time、is_deleted\n- 去掉表名前缀 m_，建表时不要外键，默认字符集使用utf8\n- order_index 重命名为 sort_order\n- 字符串字段的长度根据含义进行调整，不要默认都是255\n- 在 ucard-common/src/main/resources/db/migration 目录下生成对应的变更脚本，参考该目录下其他脚本\n\n\n为下面文件夹中的po类添加对应 dao\n- ucard-common/src/main/java/cn/cytong/ucard/trade/model/po\n\ndao 应该放在对应目录 dao 包下，参考 @ucard-common/src/main/java/cn/cytong/ucard/system/dao/OrgDao.java",
+      "projectId": "1753944502749",
+      "createdAt": "2025-07-31T08:52:41.352Z"
     }
   ]
 }

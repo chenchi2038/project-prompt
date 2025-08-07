@@ -27,10 +27,15 @@ The project can be run as a CLI tool:
 - JSON-based data persistence (data.json)
 - Auto-opens browser on startup
 
-**Frontend (Single Page Application)**
-- **public/app.js** - Main PromptWriter class handling all frontend logic
+**Frontend (Modular Single Page Application)**
 - **public/index.html** - Bootstrap-based UI with modals for project management
-- **public/style.css** - Custom styling
+- **public/css/style.css** - Custom styling
+- **public/js/** - Modular JavaScript architecture following SOLID principles:
+  - **app.js** - Main PromptWriter class (orchestration layer)
+  - **ProjectManager.js** - Project CRUD operations and state management
+  - **FileManager.js** - File operations, autocomplete, and content insertion
+  - **FavoriteManager.js** - Favorites management functionality
+  - **UIUtils.js** - Shared UI utilities and helper functions
 
 ### Key Features
 
@@ -72,7 +77,35 @@ The application expects standard project structures and automatically excludes:
 
 ## Development Notes
 
+### Architecture Principles
+- **SOLID Principles**: Each JavaScript module follows single responsibility principle
+- **KISS (Keep It Simple)**: Clean separation of concerns across modules
+- **DRY (Don't Repeat Yourself)**: Shared utilities prevent code duplication
+- **Modular Design**: Easy to maintain, test, and extend individual components
+
+### Technical Details
 - The application uses Bootstrap 5 for UI components
 - File scanning is cached for performance - use refresh button to re-scan
 - Supports fuzzy file matching similar to VSCode's Ctrl+P functionality
 - All data is persisted automatically on changes
+- Modular JavaScript architecture allows independent development of features
+
+### File Structure
+```
+public/
+├── index.html              # Main HTML file
+├── css/
+│   └── style.css          # Application styles
+└── js/
+    ├── app.js             # Main orchestration class
+    ├── ProjectManager.js  # Project management
+    ├── FileManager.js     # File operations
+    ├── FavoriteManager.js # Favorites functionality
+    └── UIUtils.js         # Shared utilities
+```
+
+### Code Quality
+- **Separation of Concerns**: Each module has a single, well-defined responsibility
+- **Dependency Injection**: Main class depends on abstractions, not concrete implementations
+- **Error Handling**: Proper error boundaries and user feedback
+- **Performance**: Optimized file operations and UI updates

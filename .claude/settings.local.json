@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(move ProjectManager.js js )",
+      "Bash(move FileManager.js js )",
+      "Bash(move FavoriteManager.js js )",
+      "Bash(move UIUtils.js js )",
+      "Bash(move app-refactored.js jsapp.js)",
+      "Bash(cp:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)"
+    ],
+    "deny": []
+  }
+}
