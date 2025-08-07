@@ -64,6 +64,14 @@ class PromptWriter {
                         <div class="project-path">${UIUtils.highlightText(project.path, this.projectManager.projectFilter)}</div>
                     </div>
                     <div class="project-item-actions">
+                        <button class="btn btn-outline-info btn-sm btn-icon icon-up"
+                                onclick="event.stopPropagation(); promptWriter.moveProjectUp('${project.id}')"
+                                title="上移">
+                        </button>
+                        <button class="btn btn-outline-info btn-sm btn-icon icon-down"
+                                onclick="event.stopPropagation(); promptWriter.moveProjectDown('${project.id}')"
+                                title="下移">
+                        </button>
                         <button class="btn btn-outline-secondary btn-sm btn-icon icon-edit"
                                 onclick="event.stopPropagation(); promptWriter.editProject('${project.id}')"
                                 title="编辑项目">
@@ -433,6 +441,26 @@ class PromptWriter {
             this.renderProjectTabs();
             UIUtils.hideModal('deleteProjectModal');
             UIUtils.showMessage('项目删除成功', 'success');
+        } catch (error) {
+            UIUtils.showMessage(error.message, 'error');
+        }
+    }
+
+    async moveProjectUp(projectId) {
+        try {
+            await this.projectManager.moveProjectUp(projectId);
+            this.renderProjectTabs();
+            UIUtils.showMessage('项目上移成功', 'success');
+        } catch (error) {
+            UIUtils.showMessage(error.message, 'error');
+        }
+    }
+
+    async moveProjectDown(projectId) {
+        try {
+            await this.projectManager.moveProjectDown(projectId);
+            this.renderProjectTabs();
+            UIUtils.showMessage('项目下移成功', 'success');
         } catch (error) {
             UIUtils.showMessage(error.message, 'error');
         }

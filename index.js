@@ -159,6 +159,48 @@ app.delete('/api/projects/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+// 项目上移
+app.put('/api/projects/:id/move-up', async (req, res) => {
+  const { id } = req.params;
+
+  const projectIndex = appData.projects.findIndex(p => p.id === id);
+  if (projectIndex === -1) {
+    return res.status(404).json({ error: '项目未找到' });
+  }
+
+  if (projectIndex === 0) {
+    return res.status(400).json({ error: '项目已在最顶部' });
+  }
+
+  // 交换位置
+  [appData.projects[projectIndex], appData.projects[projectIndex - 1]] = 
+  [appData.projects[projectIndex - 1], appData.projects[projectIndex]];
+
+  await saveData();
+  res.json(appData.projects);
+});
+
+// 项目下移
+app.put('/api/projects/:id/move-down', async (req, res) => {
+  const { id } = req.params;
+
+  const projectIndex = appData.projects.findIndex(p => p.id === id);
+  if (projectIndex === -1) {
+    return res.status(404).json({ error: '项目未找到' });
+  }
+
+  if (projectIndex === appData.projects.length - 1) {
+    return res.status(400).json({ error: '项目已在最底部' });
+  }
+
+  // 交换位置
+  [appData.projects[projectIndex], appData.projects[projectIndex + 1]] = 
+  [appData.projects[projectIndex + 1], appData.projects[projectIndex]];
+
+  await saveData();
+  res.json(appData.projects);
+});
+
 // 预扫描项目文件
 app.post('/api/projects/:id/scan', async (req, res) => {
   const { id } = req.params;

@@ -187,6 +187,44 @@ class ProjectManager {
         }
     }
 
+    async moveProjectUp(projectId) {
+        try {
+            const response = await fetch(`/api/projects/${projectId}/move-up`, {
+                method: 'PUT'
+            });
+
+            if (response.ok) {
+                const updatedProjects = await response.json();
+                this.projects = updatedProjects;
+                return updatedProjects;
+            } else {
+                throw new Error('项目上移失败');
+            }
+        } catch (error) {
+            console.error('项目上移失败:', error);
+            throw error;
+        }
+    }
+
+    async moveProjectDown(projectId) {
+        try {
+            const response = await fetch(`/api/projects/${projectId}/move-down`, {
+                method: 'PUT'
+            });
+
+            if (response.ok) {
+                const updatedProjects = await response.json();
+                this.projects = updatedProjects;
+                return updatedProjects;
+            } else {
+                throw new Error('项目下移失败');
+            }
+        } catch (error) {
+            console.error('项目下移失败:', error);
+            throw error;
+        }
+    }
+
     restoreLastSelectedProject() {
         const lastSelectedProjectId = localStorage.getItem('lastSelectedProjectId');
         if (lastSelectedProjectId && this.projects.length > 0) {
