@@ -108,7 +108,7 @@ class ClaudeProxyManager {
     document.querySelectorAll('.edit-proxy').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const proxyId = e.target.dataset.proxyId;
+        const proxyId = e.currentTarget.dataset.proxyId;
         this.editProxy(proxyId);
       });
     });
@@ -117,7 +117,7 @@ class ClaudeProxyManager {
     document.querySelectorAll('.delete-proxy').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const proxyId = e.target.dataset.proxyId;
+        const proxyId = e.currentTarget.dataset.proxyId;
         this.deleteProxy(proxyId);
       });
     });
