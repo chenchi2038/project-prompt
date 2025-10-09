@@ -660,8 +660,44 @@ app.put('/api/claude-proxies/:id/move-down', async (req, res) => {
   }
 });
 
+// 复制代理
+app.post('/api/claude-proxies/:id/copy', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!appData.claudeProxies) {
+      appData.claudeProxies = [];
+    }
+
+    const originalProxy = appData.claudeProxies.find(p => p.id === id);
+    if (!originalProxy) {
+      return res.status(404).json({ error: '代理配置未找到' });
+    }
+
+    // 创建复制的代理配置
+    const copiedProxy = {
+      id: Date.now().toString(),
+      name: `${originalProxy.name} (副本)`,
+      url: originalProxy.url,
+      token: originalProxy.token,
+      createdAt: new Date().toISOString()
+    };
+
+    appData.claudeProxies.push(copiedProxy);
+    await saveData();
+
+    res.json(copiedProxy);
+  } catch (error) {
+    console.error('复制代理失败:', error);
+    res.status(500).json({ error: '复制代理失败' });
+  }
+});
+
 // Claude 请求转发 - 使用流式转发
 app.all('/claude/*', (req, res) => {
+  // 记录请求开始时间
+  const startTime = Date.now();
+
   // 检查是否有激活的代理
   if (!appData.activeProxyId) {
     return res.status(503).json({ error: '未配置激活的 Claude 代理' });
@@ -715,7 +751,8 @@ app.all('/claude/*', (req, res) => {
     method: req.method,
     headers: headers
   }, (proxyRes) => {
-    console.log(`收到响应，状态码: ${proxyRes.statusCode}`);
+    const responseTime = Date.now() - startTime;
+    console.log(`收到响应，状态码: ${proxyRes.statusCode}，耗时: ${responseTime}ms`);
     console.log('[响应 Headers]:', JSON.stringify(proxyRes.headers, null, 2));
 
     // 如果响应码错误（4xx或5xx），收集完整 body 后再转发
@@ -727,6 +764,7 @@ app.all('/claude/*', (req, res) => {
       });
 
       proxyRes.on('end', () => {
+        const finalTime = Date.now() - startTime;
         const responseBody = Buffer.concat(chunks);
         const contentType = proxyRes.headers['content-type'] || '';
 
@@ -737,6 +775,8 @@ app.all('/claude/*', (req, res) => {
           console.error('[错误响应 Body]:', `二进制数据,长度: ${responseBody.length} 字节`);
         }
 
+        console.log(`请求完成，总耗时: ${finalTime}ms`);
+
         // 发送响应给客户端
         res.writeHead(proxyRes.statusCode, proxyRes.headers);
         res.end(responseBody);
@@ -745,12 +785,19 @@ app.all('/claude/*', (req, res) => {
       // 正常响应，直接流式转发
       res.writeHead(proxyRes.statusCode, proxyRes.headers);
       proxyRes.pipe(res);
+
+      // 监听流结束事件以记录总耗时
+      proxyRes.on('end', () => {
+        const finalTime = Date.now() - startTime;
+        console.log(`请求完成，总耗时: ${finalTime}ms`);
+      });
     }
   });
 
   // 错误处理
   proxyReq.on('error', (error) => {
-    console.error('!!! 代理请求错误:', error);
+    const errorTime = Date.now() - startTime;
+    console.error(`!!! 代理请求错误 (耗时: ${errorTime}ms):`, error);
     if (!res.headersSent) {
       res.status(500).json({
         error: '请求转发失败',

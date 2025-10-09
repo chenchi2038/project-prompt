@@ -236,6 +236,24 @@
     content: '↓';
 }
 
+.btn-icon.icon-eye::before {
+    content: '○';
+}
+
+.btn-icon.icon-eye.visible::before {
+    content: '●';
+}
+
+/* Token 可见性按钮样式 */
+#toggleTokenVisibility {
+    border-color: #dee2e6;
+}
+
+#toggleTokenVisibility:hover {
+    border-color: #adb5bd;
+    background-color: #f8f9fa;
+}
+
 /* 收藏功能样式 */
 #favoriteBtn.favorited {
     background-color: #dc3545;

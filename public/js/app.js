@@ -193,15 +193,15 @@ class PromptWriter {
         });
 
         // Token 可见性切换
-        document.getElementById('toggleTokenVisibility').addEventListener('click', () => {
+        document.getElementById('toggleTokenVisibility').addEventListener('click', (e) => {
             const tokenInput = document.getElementById('proxyToken');
-            const icon = document.getElementById('tokenVisibilityIcon');
+            const btn = e.currentTarget;
             if (tokenInput.type === 'password') {
                 tokenInput.type = 'text';
-                icon.textContent = '🙈';
+                btn.classList.add('visible');
             } else {
                 tokenInput.type = 'password';
-                icon.textContent = '👁️';
+                btn.classList.remove('visible');
             }
         });
 

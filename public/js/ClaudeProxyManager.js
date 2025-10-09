@@ -54,6 +54,9 @@ class ClaudeProxyManager {
           <button class="btn btn-sm btn-outline-secondary move-down-proxy" data-proxy-id="${proxy.id}" ${index === this.proxies.length - 1 ? 'disabled' : ''} title="下移">
             <span class="btn-icon">↓</span>
           </button>
+          <button class="btn btn-sm btn-outline-success copy-proxy" data-proxy-id="${proxy.id}" title="复制">
+            <span class="btn-text">复制</span>
+          </button>
           <button class="btn btn-sm btn-outline-primary edit-proxy" data-proxy-id="${proxy.id}" title="编辑">
             <span class="btn-text">编辑</span>
           </button>
@@ -101,6 +104,15 @@ class ClaudeProxyManager {
         e.stopPropagation();
         const proxyId = e.currentTarget.dataset.proxyId;
         this.moveProxy(proxyId, 'down');
+      });
+    });
+
+    // 复制代理
+    document.querySelectorAll('.copy-proxy').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const proxyId = e.currentTarget.dataset.proxyId;
+        this.copyProxy(proxyId);
       });
     });
 
@@ -291,6 +303,31 @@ class ClaudeProxyManager {
     } catch (error) {
       console.error('移动代理失败:', error);
       UIUtils.showMessage('移动代理失败', 'error');
+    }
+  }
+
+  /**
+   * 复制代理
+   */
+  async copyProxy(proxyId) {
+    try {
+      const proxy = this.proxies.find(p => p.id === proxyId);
+      const proxyName = proxy ? proxy.name : '代理';
+
+      const response = await fetch(`/api/claude-proxies/${proxyId}/copy`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        UIUtils.showMessage(`已复制代理: ${proxyName}`, 'success');
+        await this.loadProxies();
+      } else {
+        const error = await response.json();
+        UIUtils.showMessage(error.error || '复制失败', 'error');
+      }
+    } catch (error) {
+      console.error('复制代理失败:', error);
+      UIUtils.showMessage('复制代理失败', 'error');
     }
   }
 }
