@@ -9,7 +9,8 @@
       "Bash(move app-refactored.js jsapp.js)",
       "Bash(cp:*)",
       "Bash(rm:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }
