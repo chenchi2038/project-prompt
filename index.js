@@ -716,12 +716,36 @@ app.all('/claude/*', (req, res) => {
     headers: headers
   }, (proxyRes) => {
     console.log(`收到响应，状态码: ${proxyRes.statusCode}`);
+    console.log('[响应 Headers]:', JSON.stringify(proxyRes.headers, null, 2));
 
-    // 转发响应状态码
-    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    // 如果响应码错误（4xx或5xx），收集完整 body 后再转发
+    if (proxyRes.statusCode >= 400) {
+      console.error(`!!! 响应码错误: ${proxyRes.statusCode}`);
+      const chunks = [];
+      proxyRes.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
 
-    // 直接将响应流传给客户端
-    proxyRes.pipe(res);
+      proxyRes.on('end', () => {
+        const responseBody = Buffer.concat(chunks);
+        const contentType = proxyRes.headers['content-type'] || '';
+
+        // 打印完整错误响应
+        if (contentType.includes('application/json') || contentType.includes('text/')) {
+          console.error('[完整错误响应 Body]:', responseBody.toString('utf-8'));
+        } else {
+          console.error('[错误响应 Body]:', `二进制数据,长度: ${responseBody.length} 字节`);
+        }
+
+        // 发送响应给客户端
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        res.end(responseBody);
+      });
+    } else {
+      // 正常响应，直接流式转发
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res);
+    }
   });
 
   // 错误处理
