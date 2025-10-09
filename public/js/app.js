@@ -3,12 +3,13 @@ class PromptWriter {
         this.projectManager = new ProjectManager();
         this.fileManager = new FileManager();
         this.favoriteManager = new FavoriteManager();
-        
+        this.claudeProxyManager = new ClaudeProxyManager(UIUtils);
+
         this.saveTimeout = null;
-        
+
         this.init();
     }
-    
+
     async init() {
         await this.loadData();
         this.bindEvents();
@@ -27,6 +28,7 @@ class PromptWriter {
     async loadData() {
         await this.projectManager.loadProjects();
         await this.favoriteManager.loadFavorites();
+        await this.claudeProxyManager.loadProxies();
         this.renderProjectTabs();
     }
     
@@ -173,10 +175,40 @@ class PromptWriter {
         this.bindButtonEvents();
         this.bindProjectEvents();
         this.bindFavoriteEvents();
+        this.bindClaudeProxyEvents();
 
         document.getElementById('projectFilter').addEventListener('input', (e) => {
             this.projectManager.projectFilter = e.target.value;
             this.renderProjectTabs();
+        });
+    }
+
+    bindClaudeProxyEvents() {
+        document.getElementById('addClaudeProxyBtn').addEventListener('click', () => {
+            this.claudeProxyManager.showAddProxyDialog();
+        });
+
+        document.getElementById('saveClaudeProxyBtn').addEventListener('click', () => {
+            this.claudeProxyManager.saveProxy();
+        });
+
+        // Token 可见性切换
+        document.getElementById('toggleTokenVisibility').addEventListener('click', () => {
+            const tokenInput = document.getElementById('proxyToken');
+            const icon = document.getElementById('tokenVisibilityIcon');
+            if (tokenInput.type === 'password') {
+                tokenInput.type = 'text';
+                icon.textContent = '🙈';
+            } else {
+                tokenInput.type = 'password';
+                icon.textContent = '👁️';
+            }
+        });
+
+        // 当打开代理设置模态框时重新加载代理列表
+        const proxySettingsModal = document.getElementById('claudeProxySettingsModal');
+        proxySettingsModal.addEventListener('show.bs.modal', () => {
+            this.claudeProxyManager.loadProxies();
         });
     }
 

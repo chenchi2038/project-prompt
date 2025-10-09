@@ -320,3 +320,141 @@
     color: #0056b3;
     text-decoration: underline;
 }
+
+/* Claude 代理配置样式 */
+.proxy-item {
+    padding: 0.875rem;
+    margin-bottom: 0.625rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.proxy-item:not(.active):hover {
+    background-color: rgba(0, 123, 255, 0.04);
+    border-color: rgba(0, 123, 255, 0.3);
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.proxy-item.active {
+    border-color: #28a745;
+    background-color: #f0f9f3;
+    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.15);
+    cursor: default;
+}
+
+.proxy-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.proxy-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #212529;
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.proxy-active-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #fff;
+    background-color: #28a745;
+    border-radius: 0.25rem;
+}
+
+.proxy-url {
+    font-size: 0.8rem;
+    color: #6c757d;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.proxy-actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.proxy-actions .btn {
+    min-width: 60px;
+    height: 32px;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.75rem;
+    border-width: 1px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.proxy-actions .btn.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: #fff;
+}
+
+.proxy-actions .btn.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.proxy-actions .btn-outline-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.proxy-actions .btn-outline-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+.proxy-actions .btn-outline-secondary {
+    min-width: 32px;
+    width: 32px;
+    padding: 0;
+}
+
+.proxy-actions .btn-outline-secondary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.3);
+}
+
+.proxy-actions .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.proxy-actions .btn-icon {
+    font-size: 1.1rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.proxy-actions .btn-text {
+    font-size: 0.875rem;
+}
+
+/* 导航栏代理徽章样式 */
+.navbar .badge {
+    font-weight: 500;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}

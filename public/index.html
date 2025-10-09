@@ -13,6 +13,9 @@
         <nav class="navbar navbar-light bg-light mb-3">
             <div class="container-fluid">
                 <span class="navbar-brand">提示词编写工具</span>
+                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#claudeProxySettingsModal">
+                    Claude 代理设置
+                </button>
             </div>
         </nav>
 
@@ -243,12 +246,71 @@
         </div>
     </div>
 
+    <!-- Claude 代理设置模态框 -->
+    <div class="modal fade" id="claudeProxySettingsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Claude 代理设置</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <button class="btn btn-primary btn-sm" id="addClaudeProxyBtn">添加代理</button>
+                    </div>
+                    <div id="claudeProxyList">
+                        <!-- 代理列表将在这里动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Claude 代理配置模态框 -->
+    <div class="modal fade" id="claudeProxyModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="claudeProxyModalLabel">添加 Claude 代理</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="claudeProxyForm">
+                        <input type="hidden" id="proxyId">
+                        <div class="mb-3">
+                            <label for="proxyName" class="form-label">代理名称</label>
+                            <input type="text" class="form-control" id="proxyName" required placeholder="例如: Claude 官方">
+                        </div>
+                        <div class="mb-3">
+                            <label for="proxyUrl" class="form-label">代理 URL</label>
+                            <input type="url" class="form-control" id="proxyUrl" required placeholder="例如: https://api.anthropic.com">
+                        </div>
+                        <div class="mb-3">
+                            <label for="proxyToken" class="form-label">API Token</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="proxyToken" required placeholder="sk-ant-...">
+                                <button class="btn btn-outline-secondary" type="button" id="toggleTokenVisibility">
+                                    <span id="tokenVisibilityIcon">👁️</span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveClaudeProxyBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <!-- 重构后的模块化JS文件 -->
     <script src="js/UIUtils.js"></script>
     <script src="js/ProjectManager.js"></script>
     <script src="js/FileManager.js"></script>
     <script src="js/FavoriteManager.js"></script>
+    <script src="js/ClaudeProxyManager.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

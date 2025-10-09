@@ -24,18 +24,24 @@ The project can be run as a CLI tool:
 - Main application server running on port 5010
 - RESTful API endpoints for projects, prompts, and favorites management
 - **Project ordering APIs**: `/api/projects/:id/move-up` and `/api/projects/:id/move-down`
+- **Claude proxy APIs**: Full proxy configuration management and request forwarding
+  - `/api/claude-proxies` - CRUD operations for proxy configurations
+  - `/api/claude-proxies/:id/activate` - Activate a proxy
+  - `/api/claude-proxies/:id/move-up` and `/move-down` - Reorder proxies
+  - `/claude/*` - Stream-based request forwarding to active proxy
 - File scanning with .gitignore integration using glob patterns
 - JSON-based data persistence (data.json)
 - Auto-opens browser on startup
 
 **Frontend (Modular Single Page Application)**
-- **public/index.html** - Bootstrap-based UI with modals for project management
+- **public/index.html** - Bootstrap-based UI with modals for project and proxy management
 - **public/css/style.css** - Custom styling with compact layout and smooth transitions
 - **public/js/** - Modular JavaScript architecture following SOLID principles:
   - **app.js** - Main PromptWriter class (orchestration layer) with project ordering methods
   - **ProjectManager.js** - Project CRUD operations, state management, and ordering APIs
   - **FileManager.js** - File operations, autocomplete, and content insertion
   - **FavoriteManager.js** - Favorites management functionality
+  - **ClaudeProxyManager.js** - Claude proxy configuration and management
   - **UIUtils.js** - Shared UI utilities and helper functions
 
 ### Key Features
@@ -69,12 +75,21 @@ The project can be run as a CLI tool:
    - Absolute positioning for action buttons to prevent layout overflow
    - Smooth animations and transitions for better user experience
 
+6. **Claude Proxy Management**
+   - Add/edit/delete Claude API proxy configurations
+   - One-click activation by clicking on proxy item
+   - Display active proxy name in navbar
+   - Reorder proxies with up/down buttons
+   - Stream-based request forwarding to active proxy
+
 ### Data Storage
 
 - **data.json** - Main data file containing:
   - `projects[]` - Project configurations
-  - `prompts{}` - Project ID to prompt content mapping  
+  - `prompts{}` - Project ID to prompt content mapping
   - `favorites[]` - Saved favorite prompts
+  - `claudeProxies[]` - Claude proxy configurations
+  - `activeProxyId` - Currently active proxy ID
 
 ### File Structure Patterns
 
@@ -105,15 +120,16 @@ The application expects standard project structures and automatically excludes:
 ### File Structure
 ```
 public/
-├── index.html              # Main HTML file
+├── index.html                 # Main HTML file
 ├── css/
-│   └── style.css          # Application styles
+│   └── style.css             # Application styles
 └── js/
-    ├── app.js             # Main orchestration class
-    ├── ProjectManager.js  # Project management
-    ├── FileManager.js     # File operations
-    ├── FavoriteManager.js # Favorites functionality
-    └── UIUtils.js         # Shared utilities
+    ├── app.js                # Main orchestration class
+    ├── ProjectManager.js     # Project management
+    ├── FileManager.js        # File operations
+    ├── FavoriteManager.js    # Favorites functionality
+    ├── ClaudeProxyManager.js # Claude proxy management
+    └── UIUtils.js            # Shared utilities
 ```
 
 ### Code Quality
@@ -124,7 +140,16 @@ public/
 - **User Experience**: Intuitive interactions with clear visual feedback
 - **Accessibility**: Proper button labeling and keyboard navigation support
 
-### Recent Improvements (Latest Version)
+### Recent Improvements (Latest Version - v2.2.0)
+- **Claude Proxy Management**: Full proxy configuration system with CRUD operations
+- **One-Click Activation**: Click proxy item to activate, no separate button needed
+- **Active Proxy Display**: Navbar shows currently active proxy name with badge
+- **Proxy Ordering**: Move proxies up/down with arrow buttons
+- **Request Forwarding**: Stream-based Claude API request proxy with proper header handling
+- **UI Improvements**: Unified button styles, hover effects, and smooth animations
+- **Smart Notifications**: Show proxy names in activation and deletion confirmations
+
+### Previous Improvements (v2.1.0)
 - **Project Ordering**: Added up/down arrow buttons to reorder projects in the list
 - **Compact Display**: Reduced spacing and padding for more efficient space usage
 - **Hover Interactions**: Project paths are now hidden by default, shown on hover

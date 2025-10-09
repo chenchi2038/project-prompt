@@ -3,6 +3,9 @@ const path = require('path');
 const fs = require('fs-extra');
 const open = require('open');
 const { glob } = require('glob');
+const https = require('https');
+const http = require('http');
+const { Transform } = require('stream');
 
 const app = express();
 const PORT = 5010;
@@ -11,15 +14,23 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 // 文件缓存
 const fileCache = new Map();
 
-// 中间件
-app.use(express.json());
+// 中间件 - 对于 /claude/* 路由跳过 JSON 解析，保留原始流
+app.use((req, res, next) => {
+  if (req.path.startsWith('/claude/')) {
+    // Claude 代理路由跳过 body 解析，保留原始流
+    return next();
+  }
+  express.json()(req, res, next);
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 数据存储
 let appData = {
   projects: [],
   prompts: {}, // 项目ID -> 提示词内容
-  favorites: [] // 收藏的提示词列表
+  favorites: [], // 收藏的提示词列表
+  claudeProxies: [], // Claude 代理配置列表
+  activeProxyId: null // 当前激活的代理 ID
 };
 
 // 读取 .gitignore 文件并转换为 glob 模式
@@ -173,7 +184,7 @@ app.put('/api/projects/:id/move-up', async (req, res) => {
   }
 
   // 交换位置
-  [appData.projects[projectIndex], appData.projects[projectIndex - 1]] = 
+  [appData.projects[projectIndex], appData.projects[projectIndex - 1]] =
   [appData.projects[projectIndex - 1], appData.projects[projectIndex]];
 
   await saveData();
@@ -194,7 +205,7 @@ app.put('/api/projects/:id/move-down', async (req, res) => {
   }
 
   // 交换位置
-  [appData.projects[projectIndex], appData.projects[projectIndex + 1]] = 
+  [appData.projects[projectIndex], appData.projects[projectIndex + 1]] =
   [appData.projects[projectIndex + 1], appData.projects[projectIndex]];
 
   await saveData();
@@ -338,18 +349,18 @@ app.get('/api/projects/:projectId/file-content', async (req, res) => {
   try {
     const { projectId } = req.params;
     const { filePath } = req.query;
-    
+
     if (!filePath) {
       return res.status(400).json({ error: '文件路径参数缺失' });
     }
-    
+
     const project = appData.projects.find(p => p.id === projectId);
     if (!project) {
       return res.status(404).json({ error: '项目不存在' });
     }
 
     const fullPath = path.join(project.path, filePath);
-    
+
     // 安全检查：确保文件路径在项目目录内
     const resolvedPath = path.resolve(fullPath);
     const resolvedProjectPath = path.resolve(project.path);
@@ -359,14 +370,14 @@ app.get('/api/projects/:projectId/file-content', async (req, res) => {
 
     if (await fs.pathExists(fullPath)) {
       const fileContent = await fs.readFile(fullPath, 'utf8');
-      res.json({ 
+      res.json({
         filePath,
-        content: fileContent 
+        content: fileContent
       });
     } else {
       res.status(404).json({ error: '文件不存在' });
     }
-    
+
   } catch (error) {
     console.error('读取文件失败:', error);
     res.status(500).json({ error: '读取文件失败' });
@@ -461,6 +472,288 @@ app.put('/api/favorites/:id', async (req, res) => {
     console.error('更新收藏失败:', error);
     res.status(500).json({ error: '更新收藏失败' });
   }
+});
+
+// Claude 代理配置 API
+
+// 获取所有代理配置
+app.get('/api/claude-proxies', (req, res) => {
+  res.json({
+    proxies: appData.claudeProxies || [],
+    activeProxyId: appData.activeProxyId
+  });
+});
+
+// 添加代理配置
+app.post('/api/claude-proxies', async (req, res) => {
+  try {
+    const { name, url, token } = req.body;
+
+    if (!name || !url || !token) {
+      return res.status(400).json({ error: '名称、URL和Token不能为空' });
+    }
+
+    const proxy = {
+      id: Date.now().toString(),
+      name,
+      url,
+      token,
+      createdAt: new Date().toISOString()
+    };
+
+    if (!appData.claudeProxies) {
+      appData.claudeProxies = [];
+    }
+
+    appData.claudeProxies.push(proxy);
+    await saveData();
+
+    res.json(proxy);
+  } catch (error) {
+    console.error('添加代理配置失败:', error);
+    res.status(500).json({ error: '添加代理配置失败' });
+  }
+});
+
+// 更新代理配置
+app.put('/api/claude-proxies/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, url, token } = req.body;
+
+    if (!appData.claudeProxies) {
+      appData.claudeProxies = [];
+    }
+
+    const proxyIndex = appData.claudeProxies.findIndex(p => p.id === id);
+    if (proxyIndex === -1) {
+      return res.status(404).json({ error: '代理配置未找到' });
+    }
+
+    if (name) appData.claudeProxies[proxyIndex].name = name;
+    if (url) appData.claudeProxies[proxyIndex].url = url;
+    if (token) appData.claudeProxies[proxyIndex].token = token;
+    appData.claudeProxies[proxyIndex].updatedAt = new Date().toISOString();
+
+    await saveData();
+    res.json(appData.claudeProxies[proxyIndex]);
+  } catch (error) {
+    console.error('更新代理配置失败:', error);
+    res.status(500).json({ error: '更新代理配置失败' });
+  }
+});
+
+// 删除代理配置
+app.delete('/api/claude-proxies/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!appData.claudeProxies) {
+      appData.claudeProxies = [];
+    }
+
+    const proxyIndex = appData.claudeProxies.findIndex(p => p.id === id);
+    if (proxyIndex === -1) {
+      return res.status(404).json({ error: '代理配置未找到' });
+    }
+
+    appData.claudeProxies.splice(proxyIndex, 1);
+
+    // 如果删除的是激活的代理,清除激活状态
+    if (appData.activeProxyId === id) {
+      appData.activeProxyId = null;
+    }
+
+    await saveData();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('删除代理配置失败:', error);
+    res.status(500).json({ error: '删除代理配置失败' });
+  }
+});
+
+// 设置激活的代理
+app.put('/api/claude-proxies/:id/activate', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!appData.claudeProxies) {
+      appData.claudeProxies = [];
+    }
+
+    const proxy = appData.claudeProxies.find(p => p.id === id);
+    if (!proxy) {
+      return res.status(404).json({ error: '代理配置未找到' });
+    }
+
+    appData.activeProxyId = id;
+    await saveData();
+
+    res.json({ success: true, activeProxyId: id });
+  } catch (error) {
+    console.error('激活代理失败:', error);
+    res.status(500).json({ error: '激活代理失败' });
+  }
+});
+
+// 上移代理
+app.put('/api/claude-proxies/:id/move-up', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!appData.claudeProxies) {
+      appData.claudeProxies = [];
+    }
+
+    const currentIndex = appData.claudeProxies.findIndex(p => p.id === id);
+    if (currentIndex === -1) {
+      return res.status(404).json({ error: '代理配置未找到' });
+    }
+
+    if (currentIndex === 0) {
+      return res.status(400).json({ error: '已经是第一个代理' });
+    }
+
+    // 交换位置
+    const temp = appData.claudeProxies[currentIndex];
+    appData.claudeProxies[currentIndex] = appData.claudeProxies[currentIndex - 1];
+    appData.claudeProxies[currentIndex - 1] = temp;
+
+    await saveData();
+
+    res.json({ success: true, proxies: appData.claudeProxies });
+  } catch (error) {
+    console.error('上移代理失败:', error);
+    res.status(500).json({ error: '上移代理失败' });
+  }
+});
+
+// 下移代理
+app.put('/api/claude-proxies/:id/move-down', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!appData.claudeProxies) {
+      appData.claudeProxies = [];
+    }
+
+    const currentIndex = appData.claudeProxies.findIndex(p => p.id === id);
+    if (currentIndex === -1) {
+      return res.status(404).json({ error: '代理配置未找到' });
+    }
+
+    if (currentIndex === appData.claudeProxies.length - 1) {
+      return res.status(400).json({ error: '已经是最后一个代理' });
+    }
+
+    // 交换位置
+    const temp = appData.claudeProxies[currentIndex];
+    appData.claudeProxies[currentIndex] = appData.claudeProxies[currentIndex + 1];
+    appData.claudeProxies[currentIndex + 1] = temp;
+
+    await saveData();
+
+    res.json({ success: true, proxies: appData.claudeProxies });
+  } catch (error) {
+    console.error('下移代理失败:', error);
+    res.status(500).json({ error: '下移代理失败' });
+  }
+});
+
+// Claude 请求转发 - 使用流式转发
+app.all('/claude/*', (req, res) => {
+  // 检查是否有激活的代理
+  if (!appData.activeProxyId) {
+    return res.status(503).json({ error: '未配置激活的 Claude 代理' });
+  }
+
+  const activeProxy = appData.claudeProxies.find(p => p.id === appData.activeProxyId);
+  if (!activeProxy) {
+    return res.status(503).json({ error: '激活的代理配置不存在' });
+  }
+
+  // 获取原始路径,去掉 /claude 前缀
+  const targetPath = req.path.replace(/^\/claude/, '');
+  const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+
+  // 正确拼接代理 URL 和目标路径
+  let baseUrl = activeProxy.url;
+  // 确保 baseUrl 以 / 结尾
+  if (!baseUrl.endsWith('/')) {
+    baseUrl += '/';
+  }
+  // 移除 targetPath 开头的 /，避免重复
+  const cleanTargetPath = targetPath.startsWith('/') ? targetPath.substring(1) : targetPath;
+
+  const targetUrl = new URL(cleanTargetPath + queryString, baseUrl);
+
+  // 准备转发的请求头 - 复制原始请求的所有 headers
+  const headers = { ...req.headers };
+
+  // 修改 host 为目标代理地址
+  headers['host'] = targetUrl.host;
+
+  // 修改 authorization 为代理的 token
+  headers['authorization'] = `Bearer ${activeProxy.token}`;
+
+  console.log('\n\n\n\n=== Claude 请求转发 ===');
+  console.log(`[请求信息]`);
+  console.log(`  原始路径: ${req.path}`);
+  console.log(`  原始完整URL: ${req.url}`);
+  console.log(`  转发路径: ${targetPath}`);
+  console.log(`  目标 URL: ${targetUrl.href}`);
+  console.log(`  请求方法: ${req.method}`);
+  console.log('[请求 Headers]:', JSON.stringify(headers, null, 2));
+
+  // 选择 http 或 https 模块
+  const protocol = targetUrl.protocol === 'https:' ? https : http;
+  console.log(`使用协议: ${targetUrl.protocol === 'https:' ? 'HTTPS' : 'HTTP'}`);
+
+  // 发起请求
+  console.log('开始发起代理请求...');
+  const proxyReq = protocol.request(targetUrl, {
+    method: req.method,
+    headers: headers
+  }, (proxyRes) => {
+    console.log(`收到响应，状态码: ${proxyRes.statusCode}`);
+
+    // 转发响应状态码
+    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+
+    // 直接将响应流传给客户端
+    proxyRes.pipe(res);
+  });
+
+  // 错误处理
+  proxyReq.on('error', (error) => {
+    console.error('!!! 代理请求错误:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: '请求转发失败',
+        message: error.message
+      });
+    }
+  });
+
+  proxyReq.on('socket', (socket) => {
+    console.log('代理请求已分配 socket');
+  });
+
+  proxyReq.on('finish', () => {
+    console.log('代理请求发送完成，等待响应...');
+  });
+
+  // 直接将请求流转发到代理服务器
+  console.log('开始转发请求体...');
+  req.pipe(proxyReq);
+
+  req.on('end', () => {
+    console.log('请求体转发完成');
+  });
+
+  req.on('error', (error) => {
+    console.error('!!! 请求流错误:', error);
+  });
 });
 
 // 扫描项目文件并缓存
