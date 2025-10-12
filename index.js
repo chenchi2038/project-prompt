@@ -30,7 +30,8 @@ let appData = {
   prompts: {}, // 项目ID -> 提示词内容
   favorites: [], // 收藏的提示词列表
   claudeProxies: [], // Claude 代理配置列表
-  activeProxyId: null // 当前激活的代理 ID
+  activeProxyId: null, // 当前激活的代理 ID
+  activeProjectId: null // 当前激活的项目 ID
 };
 
 // 读取 .gitignore 文件并转换为 glob 模式
@@ -103,6 +104,14 @@ async function saveData() {
 // API 路由
 app.get('/api/projects', (req, res) => {
   res.json(appData.projects);
+});
+
+// 设置当前激活的项目
+app.put('/api/active-project/:id', async (req, res) => {
+  const { id } = req.params;
+  appData.activeProjectId = id;
+  await saveData();
+  res.json({ success: true });
 });
 
 app.post('/api/projects', async (req, res) => {
@@ -222,8 +231,15 @@ app.post('/api/projects/:id/scan', async (req, res) => {
   }
 
   try {
-    const files = await scanProjectFiles(project);
-    res.json({ success: true, fileCount: files.length });
+    // 检查缓存，如果已有缓存则直接返回
+    let files = fileCache.get(id);
+    if (files) {
+      console.log(`项目 ${project.name} 文件已在缓存中，直接返回`);
+      res.json({ success: true, fileCount: files.length, fromCache: true });
+    } else {
+      files = await scanProjectFiles(project);
+      res.json({ success: true, fileCount: files.length, fromCache: false });
+    }
   } catch (error) {
     console.error('扫描项目文件失败:', error);
     res.status(500).json({ error: '扫描项目文件失败' });

@@ -106,7 +106,7 @@ class ProjectManager {
                 
                 if (needSwitchProject) {
                     this.currentProject = null;
-                    localStorage.removeItem('lastSelectedProjectId');
+                    localStorage.removeItem('activeProjectId');
                 }
                 
                 return { needSwitchProject, hasOtherProjects: this.projects.length > 0 };
@@ -119,9 +119,18 @@ class ProjectManager {
         }
     }
 
-    switchProject(projectId) {
+    async switchProject(projectId) {
         this.currentProject = this.projects.find(p => p.id === projectId);
-        localStorage.setItem('lastSelectedProjectId', projectId);
+        localStorage.setItem('activeProjectId', projectId);
+        
+        try {
+            await fetch(`/api/active-project/${projectId}`, {
+                method: 'PUT'
+            });
+        } catch (error) {
+            console.error('保存激活项目失败:', error);
+        }
+        
         return this.currentProject;
     }
 
@@ -226,9 +235,9 @@ class ProjectManager {
     }
 
     restoreLastSelectedProject() {
-        const lastSelectedProjectId = localStorage.getItem('lastSelectedProjectId');
-        if (lastSelectedProjectId && this.projects.length > 0) {
-            const targetProject = this.projects.find(p => p.id === lastSelectedProjectId);
+        const activeProjectId = localStorage.getItem('activeProjectId');
+        if (activeProjectId && this.projects.length > 0) {
+            const targetProject = this.projects.find(p => p.id === activeProjectId);
             return targetProject || this.projects[0];
         }
         return this.projects.length > 0 ? this.projects[0] : null;

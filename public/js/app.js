@@ -98,7 +98,7 @@ class PromptWriter {
             await this.projectManager.savePrompt(document.getElementById('promptTextarea').value);
         }
 
-        this.projectManager.switchProject(projectId);
+        await this.projectManager.switchProject(projectId);
         console.log('切换项目完成，当前项目:', this.projectManager.currentProject);
 
         this.renderProjectTabs();
