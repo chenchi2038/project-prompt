@@ -234,6 +234,29 @@ class ProjectManager {
         }
     }
 
+    async reorderProjects(projectIds) {
+        try {
+            const response = await fetch('/api/projects/reorder', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ projectIds })
+            });
+
+            if (response.ok) {
+                const updatedProjects = await response.json();
+                this.projects = updatedProjects;
+                return updatedProjects;
+            } else {
+                throw new Error('项目排序失败');
+            }
+        } catch (error) {
+            console.error('项目排序失败:', error);
+            throw error;
+        }
+    }
+
     restoreLastSelectedProject() {
         const activeProjectId = localStorage.getItem('activeProjectId');
         if (activeProjectId && this.projects.length > 0) {

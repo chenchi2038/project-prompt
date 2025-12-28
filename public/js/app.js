@@ -6,6 +6,7 @@ class PromptWriter {
         this.claudeProxyManager = new ClaudeProxyManager(UIUtils);
 
         this.saveTimeout = null;
+        this.sortableInstance = null;
 
         this.init();
     }
@@ -61,19 +62,12 @@ class PromptWriter {
 
             projectItem.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center">
+                    <div class="drag-handle" title="拖拽排序">⋮⋮</div>
                     <div class="flex-grow-1" style="cursor: pointer;">
                         <div class="project-name">${UIUtils.highlightText(project.name, this.projectManager.projectFilter)}</div>
                         <div class="project-path">${UIUtils.highlightText(project.path, this.projectManager.projectFilter)}</div>
                     </div>
                     <div class="project-item-actions">
-                        <button class="btn btn-outline-info btn-sm btn-icon icon-up"
-                                onclick="event.stopPropagation(); promptWriter.moveProjectUp('${project.id}')"
-                                title="上移">
-                        </button>
-                        <button class="btn btn-outline-info btn-sm btn-icon icon-down"
-                                onclick="event.stopPropagation(); promptWriter.moveProjectDown('${project.id}')"
-                                title="下移">
-                        </button>
                         <button class="btn btn-outline-secondary btn-sm btn-icon icon-edit"
                                 onclick="event.stopPropagation(); promptWriter.editProject('${project.id}')"
                                 title="编辑项目">
@@ -90,6 +84,44 @@ class PromptWriter {
             projectInfo.addEventListener('click', () => this.switchProject(project.id));
 
             projectListContainer.appendChild(projectItem);
+        });
+
+        this.initSortable();
+    }
+
+    initSortable() {
+        const projectListContainer = document.getElementById('projectList');
+
+        // 销毁旧的 Sortable 实例
+        if (this.sortableInstance) {
+            this.sortableInstance.destroy();
+            this.sortableInstance = null;
+        }
+
+        // 如果有筛选条件或者项目数量少于2个，不启用拖拽
+        if (this.projectManager.projectFilter || this.projectManager.projects.length < 2) {
+            return;
+        }
+
+        this.sortableInstance = new Sortable(projectListContainer, {
+            animation: 200,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
+            onEnd: async (evt) => {
+                if (evt.oldIndex === evt.newIndex) return;
+
+                const projectItems = projectListContainer.querySelectorAll('.project-item');
+                const newOrder = Array.from(projectItems).map(item => item.dataset.projectId);
+
+                try {
+                    await this.projectManager.reorderProjects(newOrder);
+                } catch (error) {
+                    UIUtils.showMessage(error.message, 'error');
+                    this.renderProjectTabs();
+                }
+            }
         });
     }
     

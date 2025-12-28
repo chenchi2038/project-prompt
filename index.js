@@ -6,6 +6,7 @@ const { glob } = require('glob');
 const https = require('https');
 const http = require('http');
 const { Transform } = require('stream');
+const { SocksProxyAgent } = require('socks-proxy-agent');
 
 const app = express();
 const PORT = 5010;
@@ -128,6 +129,29 @@ app.post('/api/projects', async (req, res) => {
   appData.projects.push(project);
   await saveData();
   res.json(project);
+});
+
+// 批量重排序项目（必须在 /api/projects/:id 之前定义）
+app.put('/api/projects/reorder', async (req, res) => {
+  const { projectIds } = req.body;
+
+  if (!Array.isArray(projectIds) || projectIds.length === 0) {
+    return res.status(400).json({ error: '无效的项目ID列表' });
+  }
+
+  // 验证所有项目ID都存在
+  const existingIds = new Set(appData.projects.map(p => p.id));
+  const allValid = projectIds.every(id => existingIds.has(id));
+  if (!allValid) {
+    return res.status(400).json({ error: '包含无效的项目ID' });
+  }
+
+  // 按新顺序重排项目
+  const projectMap = new Map(appData.projects.map(p => [p.id, p]));
+  appData.projects = projectIds.map(id => projectMap.get(id));
+
+  await saveData();
+  res.json(appData.projects);
 });
 
 // 更新项目
@@ -503,7 +527,7 @@ app.get('/api/claude-proxies', (req, res) => {
 // 添加代理配置
 app.post('/api/claude-proxies', async (req, res) => {
   try {
-    const { name, url, token } = req.body;
+    const { name, url, token, useNetworkProxy, networkProxyHost, networkProxyPort } = req.body;
 
     if (!name || !url || !token) {
       return res.status(400).json({ error: '名称、URL和Token不能为空' });
@@ -514,6 +538,9 @@ app.post('/api/claude-proxies', async (req, res) => {
       name,
       url,
       token,
+      useNetworkProxy: useNetworkProxy || false,
+      networkProxyHost: networkProxyHost || '127.0.0.1',
+      networkProxyPort: networkProxyPort || 7890,
       createdAt: new Date().toISOString()
     };
 
@@ -531,11 +558,46 @@ app.post('/api/claude-proxies', async (req, res) => {
   }
 });
 
+// 批量重排序代理（必须在 /api/claude-proxies/:id 之前定义）
+app.put('/api/claude-proxies/reorder', async (req, res) => {
+  try {
+    const { proxyIds } = req.body;
+
+    if (!Array.isArray(proxyIds) || proxyIds.length === 0) {
+      return res.status(400).json({ error: '无效的代理ID列表' });
+    }
+
+    if (!appData.claudeProxies) {
+      appData.claudeProxies = [];
+    }
+
+    // 验证所有代理ID都存在
+    const existingIds = new Set(appData.claudeProxies.map(p => p.id));
+    const allValid = proxyIds.every(id => existingIds.has(id));
+    if (!allValid) {
+      return res.status(400).json({ error: '包含无效的代理ID' });
+    }
+
+    // 按新顺序重排代理
+    const proxyMap = new Map(appData.claudeProxies.map(p => [p.id, p]));
+    appData.claudeProxies = proxyIds.map(id => proxyMap.get(id));
+
+    await saveData();
+    res.json({
+      proxies: appData.claudeProxies,
+      activeProxyId: appData.activeProxyId
+    });
+  } catch (error) {
+    console.error('重排序代理失败:', error);
+    res.status(500).json({ error: '重排序代理失败' });
+  }
+});
+
 // 更新代理配置
 app.put('/api/claude-proxies/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, url, token } = req.body;
+    const { name, url, token, useNetworkProxy, networkProxyHost, networkProxyPort } = req.body;
 
     if (!appData.claudeProxies) {
       appData.claudeProxies = [];
@@ -549,6 +611,9 @@ app.put('/api/claude-proxies/:id', async (req, res) => {
     if (name) appData.claudeProxies[proxyIndex].name = name;
     if (url) appData.claudeProxies[proxyIndex].url = url;
     if (token) appData.claudeProxies[proxyIndex].token = token;
+    if (typeof useNetworkProxy === 'boolean') appData.claudeProxies[proxyIndex].useNetworkProxy = useNetworkProxy;
+    if (networkProxyHost) appData.claudeProxies[proxyIndex].networkProxyHost = networkProxyHost;
+    if (networkProxyPort) appData.claudeProxies[proxyIndex].networkProxyPort = networkProxyPort;
     appData.claudeProxies[proxyIndex].updatedAt = new Date().toISOString();
 
     await saveData();
@@ -696,6 +761,9 @@ app.post('/api/claude-proxies/:id/copy', async (req, res) => {
       name: `${originalProxy.name} (副本)`,
       url: originalProxy.url,
       token: originalProxy.token,
+      useNetworkProxy: originalProxy.useNetworkProxy || false,
+      networkProxyHost: originalProxy.networkProxyHost || '127.0.0.1',
+      networkProxyPort: originalProxy.networkProxyPort || 7890,
       createdAt: new Date().toISOString()
     };
 
@@ -748,50 +816,44 @@ app.all('/claude/*', (req, res) => {
   // 修改 authorization 为代理的 token
   headers['authorization'] = `Bearer ${activeProxy.token}`;
 
-  console.log('\n\n\n\n=== Claude 请求转发 ===');
-  console.log(`[请求信息]`);
-  console.log(`  原始路径: ${req.path}`);
-  console.log(`  原始完整URL: ${req.url}`);
-  console.log(`  转发路径: ${targetPath}`);
-  console.log(`  目标 URL: ${targetUrl.href}`);
-  console.log(`  请求方法: ${req.method}`);
-  console.log('[请求 Headers]:', JSON.stringify(headers, null, 2));
-
   // 选择 http 或 https 模块
   const protocol = targetUrl.protocol === 'https:' ? https : http;
-  console.log(`使用协议: ${targetUrl.protocol === 'https:' ? 'HTTPS' : 'HTTP'}`);
 
-  // 发起请求
-  console.log('开始发起代理请求...');
-  const proxyReq = protocol.request(targetUrl, {
+  // 配置请求选项
+  const requestOptions = {
     method: req.method,
     headers: headers
-  }, (proxyRes) => {
-    const responseTime = Date.now() - startTime;
-    console.log(`收到响应，状态码: ${proxyRes.statusCode}，耗时: ${responseTime}ms`);
-    console.log('[响应 Headers]:', JSON.stringify(proxyRes.headers, null, 2));
+  };
+
+  // 如果启用了网络代理，配置 SOCKS 代理
+  if (activeProxy.useNetworkProxy) {
+    const proxyHost = activeProxy.networkProxyHost || '127.0.0.1';
+    const proxyPort = activeProxy.networkProxyPort || 7890;
+    const socksProxyUrl = `socks://${proxyHost}:${proxyPort}`;
+    requestOptions.agent = new SocksProxyAgent(socksProxyUrl);
+  }
+
+  // 发起请求
+  const proxyReq = protocol.request(targetUrl, requestOptions, (proxyRes) => {
+    const ttfb = Date.now() - startTime;
 
     // 如果响应码错误（4xx或5xx），收集完整 body 后再转发
     if (proxyRes.statusCode >= 400) {
-      console.error(`!!! 响应码错误: ${proxyRes.statusCode}`);
       const chunks = [];
       proxyRes.on('data', (chunk) => {
         chunks.push(chunk);
       });
 
       proxyRes.on('end', () => {
-        const finalTime = Date.now() - startTime;
+        const totalTime = Date.now() - startTime;
         const responseBody = Buffer.concat(chunks);
         const contentType = proxyRes.headers['content-type'] || '';
 
-        // 打印完整错误响应
+        // 打印简洁日志
+        console.log(`[Claude] ${targetUrl.href} | TTFB: ${ttfb}ms | 总耗时: ${totalTime}ms | 状态: ${proxyRes.statusCode}`);
         if (contentType.includes('application/json') || contentType.includes('text/')) {
-          console.error('[完整错误响应 Body]:', responseBody.toString('utf-8'));
-        } else {
-          console.error('[错误响应 Body]:', `二进制数据,长度: ${responseBody.length} 字节`);
+          console.error('[错误响应]:', responseBody.toString('utf-8'));
         }
-
-        console.log(`请求完成，总耗时: ${finalTime}ms`);
 
         // 发送响应给客户端
         res.writeHead(proxyRes.statusCode, proxyRes.headers);
@@ -804,8 +866,8 @@ app.all('/claude/*', (req, res) => {
 
       // 监听流结束事件以记录总耗时
       proxyRes.on('end', () => {
-        const finalTime = Date.now() - startTime;
-        console.log(`请求完成，总耗时: ${finalTime}ms`);
+        const totalTime = Date.now() - startTime;
+        console.log(`[Claude] ${targetUrl.href} | TTFB: ${ttfb}ms | 总耗时: ${totalTime}ms`);
       });
     }
   });
@@ -813,7 +875,7 @@ app.all('/claude/*', (req, res) => {
   // 错误处理
   proxyReq.on('error', (error) => {
     const errorTime = Date.now() - startTime;
-    console.error(`!!! 代理请求错误 (耗时: ${errorTime}ms):`, error);
+    console.error(`[Claude] ${targetUrl.href} | 错误 (${errorTime}ms): ${error.message}`);
     if (!res.headersSent) {
       res.status(500).json({
         error: '请求转发失败',
@@ -822,24 +884,11 @@ app.all('/claude/*', (req, res) => {
     }
   });
 
-  proxyReq.on('socket', (socket) => {
-    console.log('代理请求已分配 socket');
-  });
-
-  proxyReq.on('finish', () => {
-    console.log('代理请求发送完成，等待响应...');
-  });
-
   // 直接将请求流转发到代理服务器
-  console.log('开始转发请求体...');
   req.pipe(proxyReq);
 
-  req.on('end', () => {
-    console.log('请求体转发完成');
-  });
-
   req.on('error', (error) => {
-    console.error('!!! 请求流错误:', error);
+    console.error(`[Claude] 请求流错误: ${error.message}`);
   });
 });
 

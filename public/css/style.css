@@ -476,3 +476,104 @@
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
 }
+
+/* 拖拽排序样式 */
+.project-item.sortable-ghost {
+    opacity: 0.4;
+    background-color: #e3f2fd;
+    border: 2px dashed #007bff;
+}
+
+.project-item.sortable-chosen {
+    background-color: #e9ecef;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: grabbing;
+}
+
+.project-item.sortable-drag {
+    opacity: 1;
+    background-color: #fff;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    transform: rotate(2deg);
+}
+
+/* 拖拽手柄样式 */
+.project-item .drag-handle {
+    cursor: grab;
+    padding: 0 4px;
+    color: #adb5bd;
+    transition: color 0.2s;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    user-select: none;
+}
+
+.project-item:hover .drag-handle {
+    color: #6c757d;
+}
+
+.project-item .drag-handle:active {
+    cursor: grabbing;
+    color: #007bff;
+}
+
+/* 拖拽时隐藏操作按钮和路径提示 */
+.project-item.sortable-chosen .project-item-actions,
+.project-item.sortable-drag .project-item-actions {
+    opacity: 0 !important;
+}
+
+.project-item.sortable-chosen .project-path,
+.project-item.sortable-drag .project-path {
+    opacity: 0 !important;
+    max-height: 0 !important;
+}
+
+/* 代理拖拽手柄样式 */
+.proxy-item .proxy-drag-handle {
+    cursor: grab;
+    padding: 0 8px;
+    color: #adb5bd;
+    transition: color 0.2s;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.proxy-item:hover .proxy-drag-handle {
+    color: #6c757d;
+}
+
+.proxy-item .proxy-drag-handle:active {
+    cursor: grabbing;
+    color: #007bff;
+}
+
+/* 代理拖拽时的样式 */
+.proxy-item.sortable-ghost {
+    opacity: 0.4;
+    background-color: #e3f2fd;
+    border: 2px dashed #007bff;
+}
+
+.proxy-item.sortable-chosen {
+    background-color: #f8f9fa;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: grabbing;
+}
+
+.proxy-item.sortable-drag {
+    opacity: 1;
+    background-color: #fff;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    transform: rotate(1deg);
+}
+
+/* 拖拽时隐藏操作按钮 */
+.proxy-item.sortable-chosen .proxy-actions,
+.proxy-item.sortable-drag .proxy-actions {
+    opacity: 0 !important;
+}

@@ -293,6 +293,25 @@
                                 </button>
                             </div>
                         </div>
+                        <hr>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="useNetworkProxy">
+                                <label class="form-check-label" for="useNetworkProxy">
+                                    启用网络代理 (SOCKS)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="row" id="networkProxyConfig">
+                            <div class="col-8 mb-3">
+                                <label for="networkProxyHost" class="form-label">代理地址</label>
+                                <input type="text" class="form-control" id="networkProxyHost" placeholder="127.0.0.1" value="127.0.0.1">
+                            </div>
+                            <div class="col-4 mb-3">
+                                <label for="networkProxyPort" class="form-label">端口</label>
+                                <input type="number" class="form-control" id="networkProxyPort" placeholder="7890" value="7890">
+                            </div>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -304,6 +323,7 @@
     </div>
 
     <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <!-- 重构后的模块化JS文件 -->
     <script src="js/UIUtils.js"></script>
     <script src="js/ProjectManager.js"></script>

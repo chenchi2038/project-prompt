@@ -7,6 +7,7 @@ class ClaudeProxyManager {
     this.uiUtils = uiUtils;
     this.proxies = [];
     this.activeProxyId = null;
+    this.sortableInstance = null;
   }
 
   /**
@@ -38,8 +39,9 @@ class ClaudeProxyManager {
       return;
     }
 
-    container.innerHTML = this.proxies.map((proxy, index) => `
+    container.innerHTML = this.proxies.map((proxy) => `
       <div class="proxy-item ${proxy.id === this.activeProxyId ? 'active' : ''}" data-proxy-id="${proxy.id}">
+        <div class="proxy-drag-handle" title="拖拽排序">⋮⋮</div>
         <div class="proxy-info">
           <div class="proxy-name">
             ${this.uiUtils.escapeHtml(proxy.name)}
@@ -48,12 +50,6 @@ class ClaudeProxyManager {
           <div class="proxy-url">${this.uiUtils.escapeHtml(proxy.url)}</div>
         </div>
         <div class="proxy-actions">
-          <button class="btn btn-sm btn-outline-secondary move-up-proxy" data-proxy-id="${proxy.id}" ${index === 0 ? 'disabled' : ''} title="上移">
-            <span class="btn-icon">↑</span>
-          </button>
-          <button class="btn btn-sm btn-outline-secondary move-down-proxy" data-proxy-id="${proxy.id}" ${index === this.proxies.length - 1 ? 'disabled' : ''} title="下移">
-            <span class="btn-icon">↓</span>
-          </button>
           <button class="btn btn-sm btn-outline-success copy-proxy" data-proxy-id="${proxy.id}" title="复制">
             <span class="btn-text">复制</span>
           </button>
@@ -68,6 +64,71 @@ class ClaudeProxyManager {
     `).join('');
 
     this.attachProxyListEvents();
+    this.initSortable();
+  }
+
+  /**
+   * 初始化拖拽排序
+   */
+  initSortable() {
+    const container = document.getElementById('claudeProxyList');
+    if (!container) return;
+
+    // 销毁旧的 Sortable 实例
+    if (this.sortableInstance) {
+      this.sortableInstance.destroy();
+      this.sortableInstance = null;
+    }
+
+    // 如果代理数量少于2个，不启用拖拽
+    if (this.proxies.length < 2) {
+      return;
+    }
+
+    this.sortableInstance = new Sortable(container, {
+      animation: 200,
+      handle: '.proxy-drag-handle',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: async (evt) => {
+        if (evt.oldIndex === evt.newIndex) return;
+
+        const proxyItems = container.querySelectorAll('.proxy-item');
+        const newOrder = Array.from(proxyItems).map(item => item.dataset.proxyId);
+
+        try {
+          await this.reorderProxies(newOrder);
+        } catch (error) {
+          UIUtils.showMessage(error.message, 'error');
+          this.renderProxyList();
+        }
+      }
+    });
+  }
+
+  /**
+   * 批量重排序代理
+   */
+  async reorderProxies(proxyIds) {
+    try {
+      const response = await fetch('/api/claude-proxies/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proxyIds })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.proxies = data.proxies || [];
+        this.activeProxyId = data.activeProxyId;
+      } else {
+        throw new Error('代理排序失败');
+      }
+    } catch (error) {
+      console.error('代理排序失败:', error);
+      throw error;
+    }
   }
 
   /**
@@ -77,8 +138,8 @@ class ClaudeProxyManager {
     // 点击代理项激活代理
     document.querySelectorAll('.proxy-item').forEach(item => {
       item.addEventListener('click', (e) => {
-        // 如果点击的是按钮或按钮内的元素,不处理激活
-        if (e.target.closest('.proxy-actions button')) {
+        // 如果点击的是按钮、拖拽手柄或按钮内的元素,不处理激活
+        if (e.target.closest('.proxy-actions button') || e.target.closest('.proxy-drag-handle')) {
           return;
         }
 
@@ -86,24 +147,6 @@ class ClaudeProxyManager {
         if (proxyId !== this.activeProxyId) {
           this.activateProxy(proxyId);
         }
-      });
-    });
-
-    // 上移代理
-    document.querySelectorAll('.move-up-proxy').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const proxyId = e.currentTarget.dataset.proxyId;
-        this.moveProxy(proxyId, 'up');
-      });
-    });
-
-    // 下移代理
-    document.querySelectorAll('.move-down-proxy').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const proxyId = e.currentTarget.dataset.proxyId;
-        this.moveProxy(proxyId, 'down');
       });
     });
 
@@ -145,6 +188,9 @@ class ClaudeProxyManager {
     document.getElementById('proxyName').value = '';
     document.getElementById('proxyUrl').value = '';
     document.getElementById('proxyToken').value = '';
+    document.getElementById('useNetworkProxy').checked = false;
+    document.getElementById('networkProxyHost').value = '127.0.0.1';
+    document.getElementById('networkProxyPort').value = '7890';
     modal.show();
   }
 
@@ -161,6 +207,9 @@ class ClaudeProxyManager {
     document.getElementById('proxyName').value = proxy.name;
     document.getElementById('proxyUrl').value = proxy.url;
     document.getElementById('proxyToken').value = proxy.token;
+    document.getElementById('useNetworkProxy').checked = proxy.useNetworkProxy || false;
+    document.getElementById('networkProxyHost').value = proxy.networkProxyHost || '127.0.0.1';
+    document.getElementById('networkProxyPort').value = proxy.networkProxyPort || 7890;
     modal.show();
   }
 
@@ -172,11 +221,16 @@ class ClaudeProxyManager {
     const name = document.getElementById('proxyName').value.trim();
     const url = document.getElementById('proxyUrl').value.trim();
     const token = document.getElementById('proxyToken').value.trim();
+    const useNetworkProxy = document.getElementById('useNetworkProxy').checked;
+    const networkProxyHost = document.getElementById('networkProxyHost').value.trim() || '127.0.0.1';
+    const networkProxyPort = parseInt(document.getElementById('networkProxyPort').value) || 7890;
 
     if (!name || !url || !token) {
       UIUtils.showMessage('请填写所有必填字段', 'warning');
       return;
     }
+
+    const proxyData = { name, url, token, useNetworkProxy, networkProxyHost, networkProxyPort };
 
     try {
       let response;
@@ -185,14 +239,14 @@ class ClaudeProxyManager {
         response = await fetch(`/api/claude-proxies/${proxyId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, url, token })
+          body: JSON.stringify(proxyData)
         });
       } else {
         // 添加新代理
         response = await fetch('/api/claude-proxies', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, url, token })
+          body: JSON.stringify(proxyData)
         });
       }
 
@@ -282,27 +336,6 @@ class ClaudeProxyManager {
     } catch (error) {
       console.error('删除代理失败:', error);
       UIUtils.showMessage('删除代理失败', 'error');
-    }
-  }
-
-  /**
-   * 移动代理位置
-   */
-  async moveProxy(proxyId, direction) {
-    try {
-      const response = await fetch(`/api/claude-proxies/${proxyId}/move-${direction}`, {
-        method: 'PUT'
-      });
-
-      if (response.ok) {
-        await this.loadProxies();
-      } else {
-        const error = await response.json();
-        UIUtils.showMessage(error.error || '移动失败', 'error');
-      }
-    } catch (error) {
-      console.error('移动代理失败:', error);
-      UIUtils.showMessage('移动代理失败', 'error');
     }
   }
 
