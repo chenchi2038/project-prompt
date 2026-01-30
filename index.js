@@ -850,7 +850,7 @@ app.all('/claude/*', (req, res) => {
         const contentType = proxyRes.headers['content-type'] || '';
 
         // 打印简洁日志
-        console.log(`[Claude] ${targetUrl.href} | TTFB: ${ttfb}ms | 总耗时: ${totalTime}ms | 状态: ${proxyRes.statusCode}`);
+        console.log(`[Claude] ${targetUrl.host} | TTFB: ${ttfb}ms | 总耗时: ${totalTime}ms | 状态: ${proxyRes.statusCode}`);
         if (contentType.includes('application/json') || contentType.includes('text/')) {
           console.error('[错误响应]:', responseBody.toString('utf-8'));
         }
@@ -867,7 +867,7 @@ app.all('/claude/*', (req, res) => {
       // 监听流结束事件以记录总耗时
       proxyRes.on('end', () => {
         const totalTime = Date.now() - startTime;
-        console.log(`[Claude] ${targetUrl.href} | TTFB: ${ttfb}ms | 总耗时: ${totalTime}ms`);
+        console.log(`[Claude] ${targetUrl.host} | TTFB: ${ttfb}ms | 总耗时: ${totalTime}ms`);
       });
     }
   });
